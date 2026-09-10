@@ -1,4 +1,7 @@
-import type { Bot } from "grammy";
+import {
+    InlineKeyboard,
+    type Bot,
+} from "grammy";
 import type { BotContext } from "../session/bot-session.js";
 import {
     GiveawayService,
@@ -9,6 +12,7 @@ import {
     createPartnerKeyboard,
     createAdminKeyboard,
 } from "../keyboards/main.keyboards";
+
 
 
 const userService = new UserService();
@@ -66,9 +70,24 @@ export function registerStartCommand(bot: Bot<BotContext>) {
                 );
                 return;
             }
-            await ctx.reply(`🎁 ${giveaway.title}
+            const keyboard =
+                new InlineKeyboard()
+                    .text(
+                        "🎟 Участвовать",
+                        `giveaway:join:${giveaway.id}`,
+                    );
+
+            await ctx.reply(
+                `🎁 ${giveaway.title}
+
             🏆 Победителей: ${giveaway.winnersCount}
-            Для участия следующим шагом нужно будет отправить Player ID.`,);
+
+            Для участия нажми кнопку ниже.`,
+                {
+                    reply_markup: keyboard,
+                },
+            );
+
             return;
         }
 

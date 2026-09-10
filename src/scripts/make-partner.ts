@@ -7,7 +7,7 @@ import {
 } from "../database/schema.js";
 
 const telegramId =
-    "5441490810";
+    "2023169233";
 // zamenitj
 const [user] = await db
     .select()

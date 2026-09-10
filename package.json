@@ -15,7 +15,15 @@
     "make-admin": "tsx src/scripts/make-admin.ts",
     "seed:test-user": "tsx src/scripts/seed-test-user.ts",
     "test:create-giveaway": "tsx src/scripts/create-test-giveaway.ts",
-    "make-partner": "tsx src/scripts/make-partner.ts"
+    "make-partner": "tsx src/scripts/make-partner.ts",
+    "test:eligibility": "tsx src/scripts/test-eligibility.ts",
+    "db:data": "tsx src/scripts/show-data.ts",
+    "test:clear-participant": "tsx src/scripts/remove-test-participant.ts",
+    "giveaway:finish": "tsx src/scripts/finish-giveaway.ts",
+    "giveaway:expire": "tsx src/scripts/expire-giveaway.ts",
+    "casino:import": "tsx src/scripts/import-casino-csv.ts",
+    "db:fix-casino": "tsx src/scripts/fix-casino-columns.ts",
+    "test:partner-mode": "tsx src/scripts/test-partner-mode.ts"
   },
   "repository": {
     "type": "git",
@@ -32,6 +40,8 @@
   "dependencies": {
     "@grammyjs/storage-free": "^2.6.0",
     "better-sqlite3": "^13.0.3",
+    "csv-parse": "^7.0.2",
+    "csv-parser": "^3.2.1",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "grammy": "^1.46.0"

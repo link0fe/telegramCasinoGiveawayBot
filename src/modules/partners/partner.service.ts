@@ -59,4 +59,23 @@ export class PartnerService {
 
         return partner;
     }
+
+    async deactivatePartner(partnerId: number) {
+        const partner =
+            await this.partnerRepository
+                .findById(
+                    partnerId,
+                );
+
+        if (!partner) {
+            throw new Error(
+                "PARTNER_NOT_FOUND",
+            );
+        }
+
+        await this.partnerRepository
+            .deactivate(
+                partnerId,
+            );
+    }
 }

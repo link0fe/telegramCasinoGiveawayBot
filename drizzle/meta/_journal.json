@@ -8,6 +8,34 @@
       "when": 1788925177067,
       "tag": "0000_dashing_shen",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789013857972,
+      "tag": "0001_abnormal_kulan_gath",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789018323082,
+      "tag": "0002_cuddly_thunderbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789019222442,
+      "tag": "0003_curly_lifeguard",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789021103181,
+      "tag": "0004_square_dragon_lord",
+      "breakpoints": true
     }
   ]
 }

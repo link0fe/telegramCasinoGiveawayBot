@@ -245,3 +245,101 @@ export const participants = sqliteTable(
         ),
     }),
 );
+
+export const winners = sqliteTable(
+    "winners",
+    {
+        id: integer("id").primaryKey({
+            autoIncrement: true,
+        }),
+
+        giveawayId: integer("giveaway_id")
+            .notNull()
+            .references(() => giveaways.id),
+
+        participantId: integer("participant_id")
+            .notNull()
+            .references(() => participants.id),
+
+        place: integer("place").notNull(),
+
+        prizeAmount: real("prize_amount").notNull(),
+
+        currency: text("currency")
+            .notNull(),
+
+        voucherCode: text("voucher_code")
+            .notNull()
+            .unique(),
+
+        createdAt: integer("created_at", {
+            mode: "timestamp",
+        })
+            .notNull()
+            .$defaultFn(() => new Date()),
+    },
+    (table) => ({
+        giveawayPlaceUnique: uniqueIndex(
+            "winners_giveaway_place_unique",
+        ).on(
+            table.giveawayId,
+            table.place,
+        ),
+
+        giveawayParticipantUnique: uniqueIndex(
+            "winners_giveaway_participant_unique",
+        ).on(
+            table.giveawayId,
+            table.participantId,
+        ),
+    }),
+);
+
+export const casinoPlayers = sqliteTable(
+    "casino_players",
+    {
+        id: integer("id").primaryKey({
+            autoIncrement: true,
+        }),
+
+        playerId: text("player_id")
+            .notNull()
+            .unique(),
+
+        affiliateId: text("affiliate_id")
+            .notNull(),
+
+        affiliateName: text("affiliate_name")
+            .notNull()
+            .default(""),
+
+        firstDepositCount: integer(
+            "first_deposit_count",
+        )
+            .notNull()
+            .default(0),
+
+        firstDepositAmount: real(
+            "first_deposit_amount",
+        )
+            .notNull()
+            .default(0),
+
+        importedAt: integer(
+            "imported_at",
+            {
+                mode: "timestamp",
+            },
+        )
+            .notNull()
+            .$defaultFn(() => new Date()),
+
+        registrationDate: text(
+            "registration_date",
+        ),
+
+        firstDepositDate: text(
+            "first_deposit_date",
+        ),
+    },
+);

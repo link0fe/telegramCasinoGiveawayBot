@@ -1,20 +1,83 @@
-import { eq } from "drizzle-orm";
-
+import {
+    and,
+    eq,
+    lte,
+} from "drizzle-orm";
 import { db } from "../../database/db.js";
-
 import {
     users,
     partners,
     giveaways,
     giveawayPrizes,
 } from "../../database/schema.js";
-
 import type {
     CreateGiveawayData,
 } from "./giveaway.types.js";
 
 
 export class GiveawayRepository {
+
+    async findExpiredActive() {
+        return db
+            .select()
+            .from(giveaways)
+            .where(
+                and(
+                    eq(
+                        giveaways.status,
+                        "ACTIVE",
+                    ),
+                    lte(
+                        giveaways.endsAt,
+                        new Date(),
+                    ),
+                ),
+            );
+    }
+
+    async findPartnerTelegramId( partnerId: number,) {
+        const result = await db
+            .select({
+                telegramId:
+                    users.telegramId,
+            })
+            .from(partners)
+            .innerJoin(
+                users,
+                eq(
+                    partners.userId,
+                    users.id,
+                ),
+            )
+            .where(
+                eq(
+                    partners.id,
+                    partnerId,
+                ),
+            )
+            .limit(1);
+
+        return (
+            result[0]?.telegramId ??
+            null
+        );
+    }
+
+    async findByIdWithPartner(giveawayId: number) {
+        const result = await db
+            .select({
+                giveaway: giveaways,
+                partner: partners,
+            })
+            .from(giveaways)
+            .innerJoin(partners, eq(giveaways.partnerId, partners.id))
+            .where(
+                eq(giveaways.id, giveawayId),
+            )
+            .limit(1);
+        return result[0] ?? null;
+    }
+
     async findById(giveawayId: number) {
         const result = await db
             .select()

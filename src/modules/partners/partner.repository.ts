@@ -59,4 +59,34 @@ export class PartnerRepository {
 
         return result[0];
     }
+
+    async deactivate( partnerId: number) {
+        await db
+            .update(partners)
+            .set({
+                isActive: false,
+                updatedAt: new Date(),
+            })
+            .where(
+                eq(
+                    partners.id,
+                    partnerId,
+                ),
+            );
+    }
+    async findById(partnerId: number,) {
+        const result =
+            await db
+                .select()
+                .from(partners)
+                .where(
+                    eq(
+                        partners.id,
+                        partnerId,
+                    ),
+                )
+                .limit(1);
+
+        return result[0] ?? null;
+    }
 }

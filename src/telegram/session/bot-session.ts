@@ -46,8 +46,29 @@ export type GiveawayWizardState =
         };
     };
 
-export type BotSession = {
-    giveawayWizard?: GiveawayWizardState;
+export type ParticipationState = {
+    giveawayId: number;
+    step: "WAITING_PLAYER_ID";
 };
 
-export type BotContext = SessionFlavor<BotSession>;
+export type BotSession = {
+    giveawayWizard?: GiveawayWizardState;
+    participation?: ParticipationState;
+    casinoUpload?: CasinoUploadState;
+    partnerAdmin?: PartnerAdminState;
+};
+
+export type BotContext =
+    SessionFlavor<BotSession>;
+
+export type CasinoUploadState = {
+    step: "WAITING_CSV";
+};
+
+export type PartnerAdminState =
+    | {
+        step: "WAITING_ADD_DATA";
+    }
+    | {
+        step: "WAITING_REMOVE_ID";
+    };

@@ -425,7 +425,7 @@ export function registerGiveawayWizard(
 
                             🔗 Ссылка для участников:
                             ${giveawayLink}`,
-                            );
+                        );
 
                     } catch (error) {
                         console.error(
