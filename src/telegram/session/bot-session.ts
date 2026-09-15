@@ -71,4 +71,7 @@ export type PartnerAdminState =
     }
     | {
         step: "WAITING_REMOVE_ID";
+    }
+    | {
+        step: "WAITING_ACTIVATE_ID";
     };

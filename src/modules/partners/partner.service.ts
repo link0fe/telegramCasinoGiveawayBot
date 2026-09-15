@@ -60,7 +60,7 @@ export class PartnerService {
         return partner;
     }
 
-    async deactivatePartner(partnerId: number) {
+    async deactivatePartner(partnerId: number,) {
         const partner =
             await this.partnerRepository
                 .findById(
@@ -73,9 +73,53 @@ export class PartnerService {
             );
         }
 
+        if (!partner.isActive) {
+            throw new Error(
+                "PARTNER_ALREADY_INACTIVE",
+            );
+        }
+
         await this.partnerRepository
             .deactivate(
                 partnerId,
             );
+
+        await this.partnerRepository
+            .setUserRolePlayer(
+                partner.userId,
+            );
+
+        return partner;
+    }
+    async activatePartner(partnerId: number) {
+        const partner =
+            await this.partnerRepository
+                .findById(
+                    partnerId,
+                );
+
+        if (!partner) {
+            throw new Error(
+                "PARTNER_NOT_FOUND",
+            );
+        }
+
+        if (partner.isActive) {
+            throw new Error(
+                "PARTNER_ALREADY_ACTIVE",
+            );
+        }
+
+        await this.partnerRepository
+            .activate(
+                partnerId,
+            );
+
+        await this.partnerRepository
+            .setUserRolePartner(
+                partner.userId,
+            );
+
+        return partner;
     }
 }

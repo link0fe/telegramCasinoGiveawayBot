@@ -73,28 +73,31 @@ export function registerAdminPartnersCommand(
             }
 
 
-            const keyboard =
-                new InlineKeyboard()
-                    .text(
-                        "📋 Список партнёров",
-                        "admin:partners:list",
-                    )
-                    .row()
-                    .text(
-                        "➕ Добавить партнёра",
-                        "admin:partners:add",
-                    )
-                    .row()
-                    .text(
-                        "❌ Удалить партнёра",
-                        "admin:partners:remove",
-                    )
-                    .row()
-                    .text(
-                        "⬅️ Назад",
-                        "admin:partners:back",
-                    );
-
+        const keyboard = new InlineKeyboard()
+            .text(
+                "📋 Список партнёров",
+                "admin:partners:list",
+            )
+            .row()
+            .text(
+                "➕ Добавить партнёра",
+                "admin:partners:add",
+            )
+            .row()
+            .text(
+                "⛔ Отключить партнёра",
+                "admin:partners:remove",
+            )
+            .row()
+            .text(
+                "♻️ Активировать партнёра",
+                "admin:partners:activate",
+            )
+            .row()
+            .text(
+                "⬅️ Назад",
+                "admin:partners:back",
+            );
 
             await ctx.reply(
                 "👥 Управление партнёрами",
@@ -205,6 +208,37 @@ Affiliate ID: ${partner.affiliateId}
     Например:
 
     123456789 88369 Vitaliy
+
+    Для отмены:
+    /cancel`,
+            );
+        },
+    );
+
+    bot.callbackQuery("admin:partners:activate",
+        async (ctx) => {
+            await ctx
+                .answerCallbackQuery();
+
+            if (
+                !(await isAdmin(ctx))
+            ) {
+                return;
+            }
+
+            ctx.session.partnerAdmin = {
+                step:
+                    "WAITING_ACTIVATE_ID",
+            };
+
+            await ctx.reply(
+                `♻️ Активация партнёра
+
+    Отправь ID партнёра.
+
+    Например:
+
+    2
 
     Для отмены:
     /cancel`,
@@ -391,6 +425,17 @@ Affiliate ID: ${partner.affiliateId}
                         return;
                     }
 
+                    if (
+                        message ===
+                        "PARTNER_ALREADY_INACTIVE"
+                    ) {
+                        await ctx.reply(
+                            "⚠️ Этот партнёр уже отключён.",
+                        );
+
+                        return;
+                    }
+
                     console.error(
                         "Deactivate partner error:",
                         error,
@@ -400,9 +445,101 @@ Affiliate ID: ${partner.affiliateId}
                         "❌ Не удалось отключить партнёра.",
                     );
                 }
+                return;
+            }
+
+            // =========================
+            // АКТИВАЦИЯ ПАРТНЁРА
+            // =========================
+
+        if (
+            state.step ===
+                "WAITING_ACTIVATE_ID"
+        ) {
+            const partnerId =
+                Number(text);
+
+            if (
+                !Number.isInteger(
+                    partnerId,
+                )
+            ) {
+                await ctx.reply(
+                    "❌ ID партнёра должен быть числом.",
+                );
 
                 return;
             }
+
+            try {
+                const {
+                    PartnerService,
+                } =
+                    await import(
+                        "../../modules/partners/partner.service.js"
+                    );
+
+                const partnerService =
+                    new PartnerService();
+
+                const partner =
+                    await partnerService
+                        .activatePartner(
+                            partnerId,
+                        );
+
+                delete ctx.session
+                    .partnerAdmin;
+
+                await ctx.reply(
+                    `✅ Партнёр активирован
+
+        👤 ${partner.name}
+        Affiliate ID: ${partner.affiliateId}`,
+                );
+
+                await showMainMenu(ctx);
+
+            } catch (error) {
+                const message =
+                    error instanceof Error
+                        ? error.message
+                        : String(error);
+
+                if (
+                    message ===
+                    "PARTNER_NOT_FOUND"
+                ) {
+                    await ctx.reply(
+                        "❌ Партнёр не найден.",
+                    );
+
+                    return;
+                }
+
+                if (
+                    message ===
+                    "PARTNER_ALREADY_ACTIVE"
+                ) {
+                    await ctx.reply(
+                        "⚠️ Этот партнёр уже активен.",
+                    );
+
+                    return;
+                }
+
+                console.error(
+                    "Activate partner error:",
+                    error,
+                );
+
+                await ctx.reply(
+                    "❌ Не удалось активировать партнёра.",
+                );
+            }
+
+            return;
+        }
 
 
             await next();

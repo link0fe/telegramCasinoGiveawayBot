@@ -74,6 +74,21 @@ export class PartnerRepository {
                 ),
             );
     }
+
+    async activate(partnerId: number,) {
+        await db
+            .update(partners)
+            .set({
+                isActive: true,
+                updatedAt: new Date(),
+            })
+            .where(
+                eq(
+                    partners.id,
+                    partnerId,
+                ),
+            );
+    }
     async findById(partnerId: number,) {
         const result =
             await db
@@ -89,4 +104,20 @@ export class PartnerRepository {
 
         return result[0] ?? null;
     }
+    
+    async setUserRolePlayer(userId: number,) {
+        await db
+            .update(users)
+            .set({
+                role: "PLAYER",
+                updatedAt: new Date(),
+            })
+            .where(
+                eq(
+                    users.id,
+                    userId,
+                ),
+            );
+    }
+
 }

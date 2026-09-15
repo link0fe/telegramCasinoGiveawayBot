@@ -11,10 +11,7 @@ import {
 } from "../modules/giveaways/giveaway.repository.js";
 
 
-const giveawayId =
-    Number(
-        process.argv[2],
-    );
+const giveawayId = 10 
 
 
 if (
