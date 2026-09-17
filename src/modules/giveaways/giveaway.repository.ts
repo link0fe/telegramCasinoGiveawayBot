@@ -1,7 +1,9 @@
 import {
     and,
+    desc,
     eq,
     lte,
+    sql,
 } from "drizzle-orm";
 import { db } from "../../database/db.js";
 import {
@@ -9,6 +11,8 @@ import {
     partners,
     giveaways,
     giveawayPrizes,
+    participants,
+    winners,
 } from "../../database/schema.js";
 import type {
     CreateGiveawayData,
@@ -16,6 +20,171 @@ import type {
 
 
 export class GiveawayRepository {
+
+    async findParticipantsForAdmin( giveawayId: number,) {
+        return await db
+            .select({
+                id:
+                    participants.id,
+
+                telegramUserId:
+                    participants.telegramUserId,
+
+                casinoPlayerId:
+                    participants.casinoPlayerId,
+
+                joinedAt:
+                    participants.joinedAt,
+            })
+            .from(participants)
+            .where(
+                eq(
+                    participants.giveawayId,
+                    giveawayId,
+                ),
+            )
+            .orderBy(
+                participants.joinedAt,
+            );
+    }
+
+    async findWinnersForAdmin( giveawayId: number ) {
+        return await db
+            .select({
+                id:
+                    winners.id,
+
+                place:
+                    winners.place,
+
+                prizeAmount:
+                    winners.prizeAmount,
+
+                currency:
+                    winners.currency,
+
+                voucherCode:
+                    winners.voucherCode,
+
+                createdAt:
+                    winners.createdAt,
+
+                telegramUserId:
+                    participants.telegramUserId,
+
+                casinoPlayerId:
+                    participants.casinoPlayerId,
+            })
+            .from(winners)
+            .innerJoin(
+                participants,
+                eq(
+                    winners.participantId,
+                    participants.id,
+                ),
+            )
+            .where(
+                eq(
+                    winners.giveawayId,
+                    giveawayId,
+                ),
+            )
+            .orderBy(
+                winners.place,
+            );
+    }
+
+    async countParticipants(giveawayId: number,) {
+        const result =
+            await db
+                .select({
+                    count:
+                        sql<number>`
+                            count(*)
+                        `,
+                })
+                .from(participants)
+                .where(
+                    eq(
+                        participants.giveawayId,
+                        giveawayId,
+                    ),
+                );
+
+        return Number(
+            result[0]?.count ?? 0,
+        );
+    }
+
+    async countWinners(giveawayId: number,) {
+        const result =
+            await db
+                .select({
+                    count:
+                        sql<number>`
+                            count(*)
+                        `,
+                })
+                .from(winners)
+                .where(
+                    eq(
+                        winners.giveawayId,
+                        giveawayId,
+                    ),
+                );
+
+        return Number(
+            result[0]?.count ?? 0,
+        );
+    }
+
+    async findAllForAdmin() {
+        return await db
+            .select({
+                id:
+                    giveaways.id,
+
+                title:
+                    giveaways.title,
+
+                status:
+                    giveaways.status,
+
+                createdAt:
+                    giveaways.createdAt,
+
+                startsAt:
+                    giveaways.startsAt,
+
+                endsAt:
+                    giveaways.endsAt,
+
+                winnersCount:
+                    giveaways.winnersCount,
+
+                partnerId:
+                    partners.id,
+
+                partnerName:
+                    partners.name,
+
+                affiliateId:
+                    partners.affiliateId,
+            })
+            .from(giveaways)
+            .innerJoin(
+                partners,
+                eq(
+                    giveaways.partnerId,
+                    partners.id,
+                ),
+            )
+            .orderBy(
+                desc(
+                    giveaways.createdAt,
+                ),
+            );
+    }
 
     async findExpiredActive() {
         return db

@@ -14,6 +14,80 @@ export class GiveawayService {
             new GiveawayRepository(),
     ) {}
 
+    async getParticipantsForAdmin( giveawayId: number, ) {
+        const giveaway =
+            await this.giveawayRepository
+                .findById(
+                    giveawayId,
+                );
+
+        if (!giveaway) {
+            throw new Error(
+                "GIVEAWAY_NOT_FOUND",
+            );
+        }
+
+        return await this.giveawayRepository
+            .findParticipantsForAdmin(
+                giveawayId,
+            );
+    }
+
+
+    async getWinnersForAdmin( giveawayId: number ) {
+        const giveaway =
+            await this.giveawayRepository
+                .findById(
+                    giveawayId,
+                );
+
+        if (!giveaway) {
+            throw new Error(
+                "GIVEAWAY_NOT_FOUND",
+            );
+        }
+
+        return await this.giveawayRepository
+            .findWinnersForAdmin(
+                giveawayId,
+            );
+    }
+
+    async getAllForAdmin() {
+        const giveaways =
+            await this.giveawayRepository
+                .findAllForAdmin();
+
+        return await Promise.all(
+            giveaways.map(
+                async (giveaway) => {
+                    const [
+                        participantsCount,
+                        winnersCount,
+                    ] =
+                        await Promise.all([
+                            this.giveawayRepository
+                                .countParticipants(
+                                    giveaway.id,
+                                ),
+
+                            this.giveawayRepository
+                                .countWinners(
+                                    giveaway.id,
+                                ),
+                        ]);
+
+                    return {
+                        ...giveaway,
+                        participantsCount,
+                        actualWinnersCount:
+                            winnersCount,
+                    };
+                },
+            ),
+        );
+    }
+
     async getGiveawayById(giveawayId: number) {
         return this.giveawayRepository
             .findById(giveawayId);

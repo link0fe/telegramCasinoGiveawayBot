@@ -113,7 +113,6 @@ export function registerAdminPartnersCommand(
     bot.callbackQuery(
         "admin:partners:list",
         async (ctx) => {
-
             await ctx.answerCallbackQuery();
 
             if (
@@ -122,51 +121,138 @@ export function registerAdminPartnersCommand(
                 return;
             }
 
+            const result =
+                await db
+                    .select()
+                    .from(partners);
+
+            const keyboard =
+                new InlineKeyboard();
+
+            if (
+                result.length === 0
+            ) {
+                keyboard.text(
+                    "⬅️ Назад",
+                    "admin:partners",
+                );
+
+                await ctx.editMessageText(
+                    "👥 Партнёров пока нет.",
+                    {
+                        reply_markup:
+                            keyboard,
+                    },
+                );
+
+                return;
+            }
+
+            for (
+                const partner
+                of result
+            ) {
+                keyboard
+                    .text(
+                        `${
+                            partner.isActive
+                                ? "🟢"
+                                : "🔴"
+                        } ${partner.name}`,
+                        `admin:partner:${partner.id}`,
+                    )
+                    .row();
+            }
+
+            keyboard.text(
+                "⬅️ Назад",
+                "admin:partners",
+            );
+
+            await ctx.editMessageText(
+                `📋 Партнёры
+
+    Всего: ${result.length}
+
+    Выберите партнёра:`,
+                {
+                    reply_markup:
+                        keyboard,
+                },
+            );
+        },
+    );
+    
+    bot.callbackQuery(
+        /^admin:partner:(\d+)$/,
+        async (ctx) => {
+            await ctx.answerCallbackQuery();
+
+            if (
+                !(await isAdmin(ctx))
+            ) {
+                return;
+            }
+
+            const partnerId =
+                Number(ctx.match[1]);
 
             const result =
                 await db
                     .select()
                     .from(partners);
 
+            const partner =
+                result.find(
+                    (item) =>
+                        item.id ===
+                        partnerId,
+                );
 
-            if (
-                result.length === 0
-            ) {
+            if (!partner) {
                 await ctx.reply(
-                    "👥 Партнёров пока нет.",
+                    "❌ Партнёр не найден.",
                 );
 
                 return;
             }
 
+            const keyboard =
+                new InlineKeyboard();
 
-            let message =
-                `📋 Партнёры
-
-Всего: ${result.length}
-
-`;
-
-
-            for (
-                const partner
-                of result
-            ) {
-                message +=
-                    `#${partner.id} — ${partner.name}
-Affiliate ID: ${partner.affiliateId}
-Статус: ${
-    partner.isActive
-        ? "✅ Active"
-        : "❌ Disabled"
-}
-
-`;
+            if (partner.isActive) {
+                keyboard.text(
+                    "⛔ Отключить",
+                    `admin:partner:disable:${partner.id}`,
+                );
+            } else {
+                keyboard.text(
+                    "♻️ Активировать",
+                    `admin:partner:enable:${partner.id}`,
+                );
             }
 
+            keyboard
+                .row()
+                .text(
+                    "⬅️ К списку",
+                    "admin:partners:list",
+                );
 
-            await ctx.reply(
-                message,
+            await ctx.editMessageText(
+                `👤 ${partner.name}
+
+    Affiliate ID: ${partner.affiliateId}
+
+    Статус: ${
+        partner.isActive
+            ? "✅ Активен"
+            : "❌ Отключён"
+    }`,
+                {
+                    reply_markup:
+                        keyboard,
+                },
             );
         },
     );

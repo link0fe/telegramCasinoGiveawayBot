@@ -8,6 +8,7 @@ import type { BotContext, BotSession } from "../telegram/session/bot-session.js"
 import { startGiveawayScheduler } from "./schedulers/giveaway.scheduler.js";
 import { registerCasinoDataCommand } from "../telegram/commands/casino-data.command.js";
 import { registerAdminPartnersCommand } from "../telegram/commands/admin-partners.command.js";
+import { registerAdminGiveawaysCommand } from "../telegram/commands/admin-giveaways.command.js";
 
 
 export function createBot() {
@@ -29,6 +30,7 @@ export function createBot() {
     registerJoinGiveawayCommand(bot);
     registerCasinoDataCommand(bot);
     registerAdminPartnersCommand(bot);
+    registerAdminGiveawaysCommand(bot);
 
     bot.callbackQuery(
         "profile",
