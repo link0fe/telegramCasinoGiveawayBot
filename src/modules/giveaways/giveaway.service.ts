@@ -14,6 +14,59 @@ export class GiveawayService {
             new GiveawayRepository(),
     ) {}
 
+    async getPartnerGiveaways(telegramId: string,) {
+        return await this.giveawayRepository
+            .findAllByPartnerTelegramId(
+                telegramId,
+            );
+    }
+
+    async getPartnerGiveawayParticipants(
+        giveawayId: number,
+        telegramId: string,
+    ) {
+        const giveaway =
+            await this.giveawayRepository
+                .findPartnerGiveawayByTelegramId(
+                    giveawayId,
+                    telegramId,
+                );
+
+        if (!giveaway) {
+            throw new Error(
+                "GIVEAWAY_NOT_FOUND_OR_FORBIDDEN",
+            );
+        }
+
+        return await this.giveawayRepository
+            .findParticipantsForAdmin(
+                giveawayId,
+            );
+    }
+
+    async getPartnerGiveawayWinners(
+        giveawayId: number,
+        telegramId: string,
+    ) {
+        const giveaway =
+            await this.giveawayRepository
+                .findPartnerGiveawayByTelegramId(
+                    giveawayId,
+                    telegramId,
+                );
+
+        if (!giveaway) {
+            throw new Error(
+                "GIVEAWAY_NOT_FOUND_OR_FORBIDDEN",
+            );
+        }
+
+        return await this.giveawayRepository
+            .findWinnersForAdmin(
+                giveawayId,
+            );
+    }
+
     async getParticipantsForAdmin( giveawayId: number, ) {
         const giveaway =
             await this.giveawayRepository

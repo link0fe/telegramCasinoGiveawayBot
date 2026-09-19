@@ -9,7 +9,7 @@ import { startGiveawayScheduler } from "./schedulers/giveaway.scheduler.js";
 import { registerCasinoDataCommand } from "../telegram/commands/casino-data.command.js";
 import { registerAdminPartnersCommand } from "../telegram/commands/admin-partners.command.js";
 import { registerAdminGiveawaysCommand } from "../telegram/commands/admin-giveaways.command.js";
-
+import {registerPartnerGiveawaysCommand,} from "../telegram/commands/partner-giveaways.command.js";
 
 export function createBot() {
     const bot = new Bot<BotContext>(
@@ -31,6 +31,7 @@ export function createBot() {
     registerCasinoDataCommand(bot);
     registerAdminPartnersCommand(bot);
     registerAdminGiveawaysCommand(bot);
+    registerPartnerGiveawaysCommand(bot);
 
     bot.callbackQuery(
         "profile",

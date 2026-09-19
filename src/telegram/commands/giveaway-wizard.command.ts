@@ -14,6 +14,7 @@ import {
 import type {
     BotContext,
 } from "../session/bot-session.js";
+import { showMainMenu } from "../helpers/show-main-menu.js";
 
 
 const giveawayService =
@@ -426,6 +427,7 @@ export function registerGiveawayWizard(
                             🔗 Ссылка для участников:
                             ${giveawayLink}`,
                         );
+                        await showMainMenu(ctx);
 
                     } catch (error) {
                         console.error(

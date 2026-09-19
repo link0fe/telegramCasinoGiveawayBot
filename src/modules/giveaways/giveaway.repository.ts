@@ -349,4 +349,124 @@ export class GiveawayRepository {
             return giveaway;
         });
     }
+    async findAllByPartnerTelegramId(telegramId: string,) {
+        return await db
+            .select({
+                id:
+                    giveaways.id,
+
+                title:
+                    giveaways.title,
+
+                status:
+                    giveaways.status,
+
+                createdAt:
+                    giveaways.createdAt,
+
+                startsAt:
+                    giveaways.startsAt,
+
+                endsAt:
+                    giveaways.endsAt,
+
+                winnersCount:
+                    giveaways.winnersCount,
+
+                requireAffiliate:
+                    giveaways.requireAffiliate,
+
+                requireFirstDeposit:
+                    giveaways.requireFirstDeposit,
+
+                minFirstDepositAmount:
+                    giveaways.minFirstDepositAmount,
+            })
+            .from(giveaways)
+            .innerJoin(
+                partners,
+                eq(
+                    giveaways.partnerId,
+                    partners.id,
+                ),
+            )
+            .innerJoin(
+                users,
+                eq(
+                    partners.userId,
+                    users.id,
+                ),
+            )
+            .where(
+                and(
+                    eq(
+                        users.telegramId,
+                        telegramId,
+                    ),
+                    eq(
+                        partners.isActive,
+                        true,
+                    ),
+                ),
+            )
+            .orderBy(
+                desc(
+                    giveaways.createdAt,
+                ),
+            );
+    }
+    async findPartnerGiveawayByTelegramId(
+        giveawayId: number,
+        telegramId: string,
+    ) {
+        const result =
+            await db
+                .select({
+                    id:
+                        giveaways.id,
+
+                    title:
+                        giveaways.title,
+
+                    status:
+                        giveaways.status,
+
+                    partnerId:
+                        giveaways.partnerId,
+                })
+                .from(giveaways)
+                .innerJoin(
+                    partners,
+                    eq(
+                        giveaways.partnerId,
+                        partners.id,
+                    ),
+                )
+                .innerJoin(
+                    users,
+                    eq(
+                        partners.userId,
+                        users.id,
+                    ),
+                )
+                .where(
+                    and(
+                        eq(
+                            giveaways.id,
+                            giveawayId,
+                        ),
+                        eq(
+                            users.telegramId,
+                            telegramId,
+                        ),
+                        eq(
+                            partners.isActive,
+                            true,
+                        ),
+                    ),
+                )
+                .limit(1);
+
+        return result[0] ?? null;
+    }
 }
