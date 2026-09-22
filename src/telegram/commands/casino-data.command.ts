@@ -2,33 +2,38 @@ import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
+import {
+    InlineKeyboard,
+} from "grammy";
 import type {
     Bot,
 } from "grammy";
-
 import type {
     BotContext,
 } from "../session/bot-session.js";
-
 import {
     UserService,
 } from "../../modules/users/user.service.js";
-
 import {
-    CasinoCsvImportService,
-} from "../../modules/casino/casino-csv-import.service.js";
-
+    CasinoImportAuditService,
+} from "../../modules/casino/casino-import-audit.service.js";
 import {
     env,
 } from "../../config/env.js";
 import { showMainMenu } from "../helpers/show-main-menu.js";
+import {
+    CasinoImportRepository,
+} from "../../modules/casino/casino-import.repository.js";
 
 
 const userService =
     new UserService();
 
 const importService =
-    new CasinoCsvImportService();
+    new CasinoImportAuditService();
+
+const importRepository =
+    new CasinoImportRepository();
 
 
 async function isAdmin(
@@ -50,7 +55,7 @@ async function isAdmin(
                 ctx.from.first_name,
         });
 
-    return user.role === "ADMIN";
+    return user?.role === "ADMIN";
 }
 
 
@@ -79,20 +84,175 @@ export function registerCasinoDataCommand(
                 return;
             }
 
+            const keyboard =
+                new InlineKeyboard()
+                    .text(
+                        "📤 Загрузить CSV",
+                        "admin:casino-upload",
+                    )
+                    .row()
+                    .text(
+                        "📜 История импортов",
+                        "admin:casino-imports",
+                    )
+                    .row()
+                    .text(
+                        "🔙 Назад",
+                        "admin:casino-back",
+                    );
+
+            await ctx.reply(
+                "📊 Данные казино",
+                {
+                    reply_markup:
+                        keyboard,
+                },
+            );
+        },
+    );
+
+    bot.callbackQuery(
+        "admin:casino-upload",
+        async (ctx) => {
+            await ctx.answerCallbackQuery();
+
+            if (
+                !(await isAdmin(ctx))
+            ) {
+                await ctx.reply(
+                    "⛔ Недостаточно прав.",
+                );
+
+                return;
+            }
+
             ctx.session.casinoUpload = {
                 step: "WAITING_CSV",
             };
 
             await ctx.reply(
-                `📊 Обновление данных казино
+                `📤 Загрузка данных казино
 
-Отправь мне CSV-файл из backoffice.
+    Отправь мне CSV-файл из backoffice.
 
-Для отмены отправь /cancel`,
+    Для отмены отправь /cancel`,
             );
         },
     );
 
+    bot.callbackQuery(
+        "admin:casino-imports",
+        async (ctx) => {
+            await ctx.answerCallbackQuery();
+
+            if (
+                !(await isAdmin(ctx))
+            ) {
+                await ctx.reply(
+                    "⛔ Недостаточно прав.",
+                );
+
+                return;
+            }
+
+            const imports =
+                await importRepository
+                    .findAll();
+
+            if (imports.length === 0) {
+                await ctx.reply(
+                    "📜 История импортов пуста.",
+                );
+
+                return;
+            }
+
+            const recentImports =
+                imports.slice(
+                    0,
+                    10,
+                );
+
+            const text =
+                recentImports
+                    .map(
+                        (item) => {
+                            const status =
+                                item.status ===
+                                "SUCCESS"
+                                    ? "✅"
+                                    : "❌";
+
+                            const source =
+                                item.source ===
+                                "TELEGRAM"
+                                    ? "Telegram"
+                                    : item.source ===
+                                    "PLAYWRIGHT"
+                                        ? "Playwright"
+                                        : "CLI";
+
+                            const date =
+                                item.startedAt
+                                    .toLocaleString(
+                                        "ru-RU",
+                                    );
+
+                            return [
+                                `${status} Импорт #${item.id}`,
+                                `📥 Источник: ${source}`,
+                                `📄 Файл: ${item.fileName ?? "—"}`,
+                                `📊 Строк: ${item.totalRows}`,
+                                `✅ Импортировано: ${item.importedRows}`,
+                                `⚠️ Пропущено: ${item.skippedRows}`,
+                                `🕐 ${date}`,
+                            ].join("\n");
+                        },
+                    )
+                    .join(
+                        "\n\n────────────\n\n",
+                    );
+
+            const keyboard =
+                new InlineKeyboard()
+                    .text(
+                        "🔄 Обновить",
+                        "admin:casino-imports",
+                    )
+                    .row()
+                    .text(
+                        "🔙 Назад",
+                        "admin:casino-data",
+                    );
+
+            await ctx.reply(
+                `📜 История импортов\n\n${text}`,
+                {
+                    reply_markup:
+                        keyboard,
+                },
+            );
+        },
+    );
+
+    bot.callbackQuery(
+        "admin:casino-back",
+        async (ctx) => {
+            await ctx.answerCallbackQuery();
+
+            if (
+                !(await isAdmin(ctx))
+            ) {
+                await ctx.reply(
+                    "⛔ Недостаточно прав.",
+                );
+
+                return;
+            }
+
+            await showMainMenu(ctx);
+        },
+    );
 
     /*
      * Получение документа.
@@ -232,13 +392,46 @@ export function registerCasinoDataCommand(
 
 
                 /*
-                 * Используем НАШ существующий
-                 * importer.
-                 */
+                * Получаем внутреннего пользователя
+                * для audit history.
+                */
+                const adminUser =
+                    await userService
+                        .getOrCreateTelegramUser({
+                            telegramId:
+                                String(ctx.from.id),
+
+                            username:
+                                ctx.from.username,
+
+                            firstName:
+                                ctx.from.first_name,
+                        });
+
+                if (!adminUser) {
+                    throw new Error(
+                        "ADMIN_USER_NOT_FOUND",
+                    );
+                }
+
+
+                /*
+                * Импортируем CSV и одновременно
+                * записываем историю импорта.
+                */
                 const result =
                     await importService
                         .importFile(
                             tempFilePath,
+                            {
+                                source:
+                                    "TELEGRAM",
+
+                                fileName,
+
+                                uploadedByUserId:
+                                    adminUser.id,
+                            },
                         );
 
 

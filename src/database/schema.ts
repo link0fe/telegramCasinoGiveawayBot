@@ -172,6 +172,21 @@ export const giveaways = sqliteTable(
         })
             .notNull()
             .$defaultFn(() => new Date()),
+
+        requireChannelSubscription:
+            integer(
+                "require_channel_subscription",
+                {
+                    mode: "boolean",
+                },
+            )
+                .notNull()
+                .default(false),
+
+        channelUsername:
+            text(
+                "channel_username",
+            ),
     },
 );
 
@@ -343,3 +358,85 @@ export const casinoPlayers = sqliteTable(
         ),
     },
 );
+
+export const casinoImports =
+    sqliteTable(
+        "casino_imports",
+        {
+            id: integer("id")
+                .primaryKey({
+                    autoIncrement: true,
+                }),
+
+            source: text(
+                "source",
+                {
+                    enum: [
+                        "TELEGRAM",
+                        "PLAYWRIGHT",
+                        "CLI",
+                    ],
+                },
+            ).notNull(),
+
+            fileName: text(
+                "file_name",
+            ),
+
+            totalRows: integer(
+                "total_rows",
+            )
+                .notNull()
+                .default(0),
+
+            importedRows: integer(
+                "imported_rows",
+            )
+                .notNull()
+                .default(0),
+
+            skippedRows: integer(
+                "skipped_rows",
+            )
+                .notNull()
+                .default(0),
+
+            status: text(
+                "status",
+                {
+                    enum: [
+                        "SUCCESS",
+                        "FAILED",
+                    ],
+                },
+            ).notNull(),
+
+            uploadedByUserId: integer(
+                "uploaded_by_user_id",
+            ).references(
+                () => users.id,
+            ),
+
+            errorMessage: text(
+                "error_message",
+            ),
+
+            startedAt: integer(
+                "started_at",
+                {
+                    mode: "timestamp",
+                },
+            )
+                .notNull()
+                .$defaultFn(
+                    () => new Date(),
+                ),
+
+            finishedAt: integer(
+                "finished_at",
+                {
+                    mode: "timestamp",
+                },
+            ),
+        },
+    );

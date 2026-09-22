@@ -23,7 +23,10 @@
     "giveaway:expire": "tsx src/scripts/expire-giveaway.ts",
     "casino:import": "tsx src/scripts/import-casino-csv.ts",
     "db:fix-casino": "tsx src/scripts/fix-casino-columns.ts",
-    "test:partner-mode": "tsx src/scripts/test-partner-mode.ts"
+    "test:partner-mode": "tsx src/scripts/test-partner-mode.ts",
+    "db:fix-giveaway-subscription": "tsx src/scripts/fix-giveaway-subscription-columns.ts",
+    "db:fix-casino-imports": "tsx src/scripts/fix-casino-imports-table.ts",
+    "casino:imports": "tsx src/scripts/show-casino-imports.ts"
   },
   "repository": {
     "type": "git",

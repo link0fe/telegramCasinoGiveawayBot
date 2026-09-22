@@ -1,3 +1,6 @@
+import {
+    InlineKeyboard,
+} from "grammy";
 import type {
     Bot,
 } from "grammy";
@@ -10,10 +13,18 @@ import type {
 import {
     showMainMenu,
 } from "../helpers/show-main-menu.js";
+import {
+    TelegramSubscriptionService,
+} from "../../modules/subscriptions/telegram-subscription.service.js";
+import {
+    GiveawayService,
+} from "../../modules/giveaways/giveaway.service.js";
 
 
 const participantService =
     new ParticipantService();
+const giveawayService =
+    new GiveawayService();
 
 
 export function registerJoinGiveawayCommand(
@@ -41,7 +52,81 @@ export function registerJoinGiveawayCommand(
 
                 return;
             }
+            const giveaway =
+                await giveawayService
+                    .getGiveawayById(
+                        giveawayId,
+                    );
 
+            if (!giveaway) {
+                await ctx.reply(
+                    "❌ Розыгрыш не найден.",
+                );
+
+                return;
+            }
+
+            if (
+                giveaway.requireChannelSubscription &&
+                giveaway.channelUsername
+            ) {
+                const subscriptionService =
+                    new TelegramSubscriptionService(
+                        ctx.api,
+                    );
+
+                try {
+                    const subscribed =
+                        await subscriptionService
+                            .isSubscribed(
+                                giveaway.channelUsername,
+                                ctx.from.id,
+                            );
+
+                    if (!subscribed) {
+                        const channelUsername =
+                            giveaway.channelUsername
+                                .replace(/^@/, "");
+
+                        const keyboard =
+                            new InlineKeyboard()
+                                .url(
+                                    "📢 Подписаться",
+                                    `https://t.me/${channelUsername}`,
+                                )
+                                .row()
+                                .text(
+                                    "🔄 Проверить подписку",
+                                    `giveaway:join:${giveaway.id}`,
+                                );
+
+                        await ctx.reply(
+                            `❌ Для участия необходимо подписаться на канал ${giveaway.channelUsername}.
+
+            После подписки нажми «🔄 Проверить подписку».`,
+                            {
+                                reply_markup:
+                                    keyboard,
+                            },
+                        );
+
+                        return;
+                    }
+                } catch (error) {
+                    console.error(
+                        "Subscription check error:",
+                        error,
+                    );
+
+                    await ctx.reply(
+                        `⚠️ Не удалось проверить подписку на канал.
+
+            Проверьте, что бот добавлен администратором канала, и попробуйте ещё раз позже.`,
+                    );
+
+                    return;
+                }
+            }
 
             ctx.session.participation = {
                 giveawayId,

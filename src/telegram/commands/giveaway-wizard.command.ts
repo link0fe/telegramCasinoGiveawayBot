@@ -47,9 +47,10 @@ export function registerGiveawayWizard(
                     });
 
             if (
+                !user ||
                 user.role !==
-                "PARTNER"
-            ) {
+                    "PARTNER"
+            ){
                 await ctx.reply(
                     "⛔ Создавать розыгрыши может только партнер.",
                 );
@@ -110,7 +111,7 @@ export function registerGiveawayWizard(
 
 
             ctx.session.giveawayWizard = {
-                step: "WINNERS",
+                step: "CHANNEL_SUBSCRIPTION",
 
                 data: {
                     ...wizard.data,
@@ -123,8 +124,99 @@ export function registerGiveawayWizard(
                 },
             };
 
+            const keyboard =
+                new InlineKeyboard()
+                    .text(
+                        "✅ Да",
+                        "giveaway:channel:yes",
+                    )
+                    .text(
+                        "❌ Нет",
+                        "giveaway:channel:no",
+                    );
+
+            await ctx.reply(
+                "📢 Требовать подписку на Telegram-канал?",
+                {
+                    reply_markup:
+                        keyboard,
+                },
+            );
+        },
+    );
+
+    bot.callbackQuery(
+        "giveaway:channel:no",
+        async (ctx) => {
+            await ctx.answerCallbackQuery();
+
+            const wizard =
+                ctx.session
+                    .giveawayWizard;
+
+            if (
+                !wizard ||
+                wizard.step !==
+                    "CHANNEL_SUBSCRIPTION"
+            ) {
+                return;
+            }
+
+            ctx.session.giveawayWizard = {
+                step: "WINNERS",
+
+                data: {
+                    ...wizard.data,
+
+                    requireChannelSubscription:
+                        false,
+
+                    channelUsername:
+                        null,
+                },
+            };
+
             await ctx.reply(
                 "🏆 Сколько будет победителей?",
+            );
+        },
+    );
+
+
+    bot.callbackQuery(
+        "giveaway:channel:yes",
+        async (ctx) => {
+            await ctx.answerCallbackQuery();
+
+            const wizard =
+                ctx.session
+                    .giveawayWizard;
+
+            if (
+                !wizard ||
+                wizard.step !==
+                    "CHANNEL_SUBSCRIPTION"
+            ) {
+                return;
+            }
+
+            ctx.session.giveawayWizard = {
+                step: "CHANNEL_USERNAME",
+
+                data: {
+                    ...wizard.data,
+
+                    requireChannelSubscription:
+                        true,
+                },
+            };
+
+            await ctx.reply(
+                `📢 Отправь username канала.
+
+    Например:
+
+    @my_casino_channel`,
             );
         },
     );
@@ -255,14 +347,68 @@ export function registerGiveawayWizard(
                         return;
                     }
 
+                 ctx.session.giveawayWizard = {
+                    step: "CHANNEL_SUBSCRIPTION",
+
+                    data: {
+                        ...wizard.data,
+
+                        minFirstDepositAmount:
+                            amount,
+                    },
+                };
+
+                const keyboard =
+                    new InlineKeyboard()
+                        .text(
+                            "✅ Да",
+                            "giveaway:channel:yes",
+                        )
+                        .text(
+                            "❌ Нет",
+                            "giveaway:channel:no",
+                        );
+
+                await ctx.reply(
+                    "📢 Требовать подписку на Telegram-канал?",
+                    {
+                        reply_markup:
+                            keyboard,
+                    },
+                );
+
+                return;
+            }
+
+                case "CHANNEL_USERNAME": {
+                    let channelUsername =
+                        text.trim();
+
+                    if (
+                        !channelUsername
+                            .startsWith("@")
+                    ) {
+                        channelUsername =
+                            `@${channelUsername}`;
+                    }
+
+                    if (
+                        channelUsername.length < 2
+                    ) {
+                        await ctx.reply(
+                            "❌ Введи корректный username канала.",
+                        );
+
+                        return;
+                    }
+
                     ctx.session.giveawayWizard = {
                         step: "WINNERS",
 
                         data: {
                             ...wizard.data,
 
-                            minFirstDepositAmount:
-                                amount,
+                            channelUsername,
                         },
                     };
 
@@ -272,7 +418,6 @@ export function registerGiveawayWizard(
 
                     return;
                 }
-
 
                 case "WINNERS": {
                     const winnersCount =
@@ -387,6 +532,14 @@ export function registerGiveawayWizard(
                                             wizard.data
                                                 .minFirstDepositAmount,
 
+                                        requireChannelSubscription:
+                                            wizard.data
+                                                .requireChannelSubscription,
+
+                                        channelUsername:
+                                            wizard.data
+                                                .channelUsername,
+
                                         prizes:
                                             amounts.map(
                                                 (
@@ -402,7 +555,7 @@ export function registerGiveawayWizard(
                                                     currency:
                                                         "USD",
                                                 }),
-                                            ),
+                                            ),  
                                     },
                                 );
 

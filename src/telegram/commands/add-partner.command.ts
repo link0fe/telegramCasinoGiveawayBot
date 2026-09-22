@@ -32,7 +32,10 @@ export function registerAddPartnerCommand(
                             telegramUser.first_name,
                     });
 
-            if (admin.role !== "ADMIN") {
+            if (
+                !admin ||
+                admin.role !== "ADMIN"
+            )  {
                 await ctx.reply(
                     "⛔ Эта команда доступна только администратору.",
                 );
@@ -40,9 +43,17 @@ export function registerAddPartnerCommand(
                 return;
             }
 
+            const text =
+                ctx.message?.text;
+
+            if (!text) {
+                return;
+            }
+
             const args =
-                ctx.message.text
-                    .split(" ")
+                text
+                    .trim()
+                    .split(/\s+/)
                     .slice(1);
 
             const [
@@ -74,6 +85,14 @@ export function registerAddPartnerCommand(
                             affiliateId,
                             name,
                         });
+                        
+                if (!partner) {
+                    await ctx.reply(
+                        "❌ Не удалось создать партнера.",
+                    );
+
+                    return;
+                }
 
                 await ctx.reply(
                     `✅ Партнер создан

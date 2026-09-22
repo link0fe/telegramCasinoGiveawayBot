@@ -48,7 +48,7 @@ async function isAdmin(
                     ctx.from.first_name,
             });
 
-    return user.role === "ADMIN";
+    return user?.role === "ADMIN";
 }
 
 
@@ -409,6 +409,20 @@ export function registerAdminPartnersCommand(
 
                     const partnerService =
                         new PartnerService();
+
+                    if (
+                        !telegramId ||
+                        !affiliateId
+                    ) {
+                        await ctx.reply(
+                            `❌ Неверный формат.
+
+                    Используй:
+                    TelegramID AffiliateID Название`,
+                        );
+
+                        return;
+                    }
 
                     await partnerService
                         .createPartner({

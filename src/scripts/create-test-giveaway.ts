@@ -27,6 +27,11 @@ const giveaway =
                 requireFirstDeposit: true,
 
                 minFirstDepositAmount: 20,
+                requireChannelSubscription:
+                    false,
+
+                channelUsername:
+                    null,
 
                 prizes: [
                     {

@@ -37,6 +37,13 @@ export async function showMainMenu(
                     ctx.from.first_name,
             });
 
+    if (!user) {
+        await ctx.reply(
+            "❌ Не удалось загрузить пользователя.",
+        );
+
+        return;
+    }
 
     if (user.role === "ADMIN") {
         await ctx.reply(

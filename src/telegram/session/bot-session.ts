@@ -1,4 +1,7 @@
-import type { SessionFlavor } from "grammy";
+import type {
+    Context,
+    SessionFlavor,
+} from "grammy";
 
 export type GiveawayWizardState =
     | {
@@ -33,6 +36,8 @@ export type GiveawayWizardState =
             durationMinutes: number;
             requireFirstDeposit: boolean;
             minFirstDepositAmount: number;
+            requireChannelSubscription: boolean;
+            channelUsername: string | null;
         };
     }
     | {
@@ -42,8 +47,30 @@ export type GiveawayWizardState =
             durationMinutes: number;
             requireFirstDeposit: boolean;
             minFirstDepositAmount: number;
+            requireChannelSubscription: boolean;
+            channelUsername: string | null;
             winnersCount: number;
         };
+    }
+    | {
+        step: "CHANNEL_SUBSCRIPTION";
+        data: {
+            title: string;
+            durationMinutes: number;
+            requireFirstDeposit: boolean;
+            minFirstDepositAmount: number;
+        };
+    }
+    | {
+        step: "CHANNEL_USERNAME";
+        data: {
+            title: string;
+            durationMinutes: number;
+            requireFirstDeposit: boolean;
+            minFirstDepositAmount: number;
+            requireChannelSubscription: true;
+        };
+
     };
 
 export type ParticipationState = {
@@ -59,6 +86,7 @@ export type BotSession = {
 };
 
 export type BotContext =
+    Context &
     SessionFlavor<BotSession>;
 
 export type CasinoUploadState = {

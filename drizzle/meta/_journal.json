@@ -36,6 +36,20 @@
       "when": 1789021103181,
       "tag": "0004_square_dragon_lord",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789994389024,
+      "tag": "0005_fancy_typhoid_mary",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790080971087,
+      "tag": "0006_jazzy_the_leader",
+      "breakpoints": true
     }
   ]
 }

@@ -43,7 +43,7 @@ async function isAdmin(
                     ctx.from.first_name,
             });
 
-    return user.role === "ADMIN";
+    return user?.role === "ADMIN";
 }
 
 

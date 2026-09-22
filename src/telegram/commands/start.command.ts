@@ -93,6 +93,14 @@ export function registerStartCommand(bot: Bot<BotContext>) {
 
         let keyboard;
 
+        if (!user) {
+            await ctx.reply(
+                "❌ Не удалось загрузить пользователя.",
+            );
+
+            return;
+        }
+
         switch (user.role) {
 
             case "ADMIN":

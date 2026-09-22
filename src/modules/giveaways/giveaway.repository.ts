@@ -309,6 +309,12 @@ export class GiveawayRepository {
 
                     minFirstDepositAmount:
                         data.minFirstDepositAmount,
+                        
+                    requireChannelSubscription:
+                        data.requireChannelSubscription,
+
+                    channelUsername:
+                        data.channelUsername,
                 })
                 .returning()
                 .all();
