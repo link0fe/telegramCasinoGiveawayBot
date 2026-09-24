@@ -50,6 +50,13 @@
       "when": 1790080971087,
       "tag": "0006_jazzy_the_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1790271030679,
+      "tag": "0007_striped_diamondback",
+      "breakpoints": true
     }
   ]
 }

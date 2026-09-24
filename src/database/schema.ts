@@ -440,3 +440,58 @@ export const casinoImports =
             ),
         },
     );
+
+    export const vouchers =
+        sqliteTable(
+            "vouchers",
+            {
+                id: integer("id")
+                    .primaryKey({
+                        autoIncrement: true,
+                    }),
+
+                code: text("code")
+                    .notNull()
+                    .unique(),
+
+                amount: real("amount")
+                    .notNull(),
+
+                currency: text("currency")
+                    .notNull()
+                    .default("EUR"),
+
+                isUsed: integer(
+                    "is_used",
+                    {
+                        mode: "boolean",
+                    },
+                )
+                    .notNull()
+                    .default(false),
+
+                winnerId: integer(
+                    "winner_id",
+                ).references(
+                    () => winners.id,
+                ),
+
+                usedAt: integer(
+                    "used_at",
+                    {
+                        mode: "timestamp",
+                    },
+                ),
+
+                createdAt: integer(
+                    "created_at",
+                    {
+                        mode: "timestamp",
+                    },
+                )
+                    .notNull()
+                    .$defaultFn(
+                        () => new Date(),
+                    ),
+            },
+        );

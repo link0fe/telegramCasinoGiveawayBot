@@ -72,10 +72,8 @@ export class GiveawayFinalizerService {
                 await this.bot.api
                     .sendMessage(
                         winner.telegramUserId,
-
                         `🎉 Поздравляем!
-
-Вы заняли ${winner.place} место в розыгрыше:
+Вы победили в розыгрыше:
 
 🎁 ${giveaway.title}
 

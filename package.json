@@ -26,7 +26,9 @@
     "test:partner-mode": "tsx src/scripts/test-partner-mode.ts",
     "db:fix-giveaway-subscription": "tsx src/scripts/fix-giveaway-subscription-columns.ts",
     "db:fix-casino-imports": "tsx src/scripts/fix-casino-imports-table.ts",
-    "casino:imports": "tsx src/scripts/show-casino-imports.ts"
+    "casino:imports": "tsx src/scripts/show-casino-imports.ts",
+    "seed:vouchers": "tsx src/scripts/seed-vouchers.ts",
+    "db:fix-vouchers": "tsx src/scripts/fix-vouchers-table.ts"
   },
   "repository": {
     "type": "git",

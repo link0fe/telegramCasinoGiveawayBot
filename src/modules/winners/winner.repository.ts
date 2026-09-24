@@ -1,4 +1,5 @@
 import {
+    and,
     asc,
     eq,
 } from "drizzle-orm";
@@ -9,6 +10,7 @@ import {
     giveawayPrizes,
     giveaways,
     participants,
+    vouchers,
     winners,
 } from "../../database/schema.js";
 
@@ -95,38 +97,86 @@ export class WinnerRepository {
             place: number;
             prizeAmount: number;
             currency: string;
+            voucherId: number;
             voucherCode: string;
         }[],
     ) {
         return db.transaction(
             (tx) => {
+                const savedWinners = [];
 
                 for (
                     const item
                     of winnerData
                 ) {
-                    tx.insert(winners)
-                        .values({
-                            giveawayId,
-                            participantId:
-                                item.participantId,
-                            place:
-                                item.place,
-                            prizeAmount:
-                                item.prizeAmount,
-                            currency:
-                                item.currency,
-                            voucherCode:
-                                item.voucherCode,
-                        })
-                        .run();
+                    const winner =
+                        tx.insert(winners)
+                            .values({
+                                giveawayId,
+                                participantId:
+                                    item.participantId,
+                                place:
+                                    item.place,
+                                prizeAmount:
+                                    item.prizeAmount,
+                                currency:
+                                    item.currency,
+                                voucherCode:
+                                    item.voucherCode,
+                            })
+                            .returning()
+                            .get();
+
+                    if (!winner) {
+                        throw new Error(
+                            "WINNER_CREATE_FAILED",
+                        );
+                    }
+
+                    const voucher =
+                        tx.update(vouchers)
+                            .set({
+                                isUsed: true,
+                                winnerId:
+                                    winner.id,
+                                usedAt:
+                                    new Date(),
+                            })
+                            .where(
+                                and(
+                                    eq(
+                                        vouchers.id,
+                                        item.voucherId,
+                                    ),
+                                    eq(
+                                        vouchers.isUsed,
+                                        false,
+                                    ),
+                                ),
+                            )
+                            .returning()
+                            .get();
+
+                    if (!voucher) {
+                        throw new Error(
+                            `VOUCHER_ALREADY_USED:${item.voucherId}`,
+                        );
+                    }
+
+                    savedWinners.push({
+                        ...winner,
+                        telegramVoucherCode:
+                            voucher.code,
+                    });
                 }
 
 
                 tx.update(giveaways)
                     .set({
-                        status: "FINISHED",
-                        updatedAt: new Date(),
+                        status:
+                            "FINISHED",
+                        updatedAt:
+                            new Date(),
                     })
                     .where(
                         eq(
@@ -137,7 +187,7 @@ export class WinnerRepository {
                     .run();
 
 
-                return winnerData;
+                return savedWinners;
             },
         );
     }

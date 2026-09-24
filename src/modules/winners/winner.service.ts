@@ -1,5 +1,4 @@
 import {
-    randomBytes,
     randomInt,
 } from "node:crypto";
 
@@ -7,12 +6,19 @@ import {
     WinnerRepository,
 } from "./winner.repository.js";
 
+import {
+    VoucherRepository,
+} from "../vouchers/voucher.repository.js";
+
 
 export class WinnerService {
 
     constructor(
         private readonly winnerRepository =
             new WinnerRepository(),
+
+        private readonly voucherRepository =
+            new VoucherRepository(),
     ) {}
 
 
@@ -43,16 +49,6 @@ export class WinnerService {
         }
 
         return result;
-    }
-
-
-    private createVoucherCode() {
-        const randomPart =
-            randomBytes(5)
-                .toString("hex")
-                .toUpperCase();
-
-        return `DEMO-${randomPart}`;
     }
 
 
@@ -125,10 +121,12 @@ export class WinnerService {
                     giveawayId,
                 );
 
-        const actualWinnersCount = Math.min(
-            participants.length,
-            giveaway.winnersCount,
-        );
+
+        const actualWinnersCount =
+            Math.min(
+                participants.length,
+                giveaway.winnersCount,
+            );
 
 
         const prizes =
@@ -138,7 +136,10 @@ export class WinnerService {
                 );
 
 
-       if ( prizes.length < actualWinnersCount) {
+        if (
+            prizes.length <
+            actualWinnersCount
+        ) {
             return {
                 success: false as const,
                 reason:
@@ -147,60 +148,126 @@ export class WinnerService {
         }
 
 
-        const shuffled = this.shuffle( participants );
-
-        const selected = shuffled.slice(
-            0,
-            actualWinnersCount,
-        );
-
-        const winnerData =
-            selected.map(
-                (
-                    participant,
-                    index,
-                ) => {
-
-                    const place =
-                        index + 1;
-
-                    const prize =
-                        prizes.find(
-                            (item) =>
-                                item.place ===
-                                place,
-                        );
-
-                    if (!prize) {
-                        throw new Error(
-                            `Prize for place ${place} not found.`,
-                        );
-                    }
-
-
-                    return {
-                        participantId:
-                            participant.id,
-
-                        telegramUserId:
-                            participant.telegramUserId,
-
-                        casinoPlayerId:
-                            participant.casinoPlayerId,
-
-                        place,
-
-                        prizeAmount:
-                            prize.amount,
-
-                        currency:
-                            prize.currency,
-
-                        voucherCode:
-                            this.createVoucherCode(),
-                    };
-                },
+        const shuffled =
+            this.shuffle(
+                participants,
             );
+
+
+        const selected =
+            shuffled.slice(
+                0,
+                actualWinnersCount,
+            );
+
+
+        const reservedVoucherIds =
+            new Set<number>();
+
+
+        const winnerData: {
+            participantId: number;
+            telegramUserId: string;
+            casinoPlayerId: string;
+            place: number;
+            prizeAmount: number;
+            currency: string;
+            voucherId: number;
+            voucherCode: string;
+        }[] = [];
+
+
+        for (
+            let index = 0;
+            index < selected.length;
+            index++
+        ) {
+            const participant =
+                selected[index]!;
+
+
+            const place =
+                index + 1;
+
+
+            const prize =
+                prizes.find(
+                    (item) =>
+                        item.place ===
+                        place,
+                );
+
+
+            if (!prize) {
+                throw new Error(
+                    `Prize for place ${place} not found.`,
+                );
+            }
+
+
+            const availableVouchers =
+                await this.voucherRepository
+                    .findAll();
+
+
+            const voucher =
+                availableVouchers.find(
+                    (item) =>
+                        !item.isUsed &&
+                        item.amount ===
+                            prize.amount &&
+                        item.currency ===
+                            prize.currency &&
+                        !reservedVoucherIds.has(
+                            item.id,
+                        ),
+                );
+
+
+            if (!voucher) {
+                return {
+                    success: false as const,
+                    reason:
+                        "NO_AVAILABLE_VOUCHER" as const,
+                    place,
+                    prizeAmount:
+                        prize.amount,
+                    currency:
+                        prize.currency,
+                };
+            }
+
+
+            reservedVoucherIds.add(
+                voucher.id,
+            );
+
+
+            winnerData.push({
+                participantId:
+                    participant.id,
+
+                telegramUserId:
+                    participant.telegramUserId,
+
+                casinoPlayerId:
+                    participant.casinoPlayerId,
+
+                place,
+
+                prizeAmount:
+                    prize.amount,
+
+                currency:
+                    prize.currency,
+
+                voucherId:
+                    voucher.id,
+
+                voucherCode:
+                    voucher.code,
+            });
+        }
 
 
         await this.winnerRepository
@@ -221,6 +288,9 @@ export class WinnerService {
                         currency:
                             winner.currency,
 
+                        voucherId:
+                            winner.voucherId,
+
                         voucherCode:
                             winner.voucherCode,
                     }),
@@ -230,7 +300,8 @@ export class WinnerService {
 
         return {
             success: true as const,
-            winners: winnerData,
+            winners:
+                winnerData,
         };
     }
 }
