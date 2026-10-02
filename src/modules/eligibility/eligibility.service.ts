@@ -10,7 +10,12 @@ import type {
     EligibilityResult,
 } from "./eligibility.types.js";
 
+
+const USD_TO_RUB_RATE = 84;
+
+
 export class EligibilityService {
+
     constructor(
         private readonly giveawayRepository =
             new GiveawayRepository(),
@@ -19,27 +24,33 @@ export class EligibilityService {
             new DatabaseCasinoDataProvider(),
     ) {}
 
+
     async check(
         giveawayId: number,
         playerId: string,
     ): Promise<EligibilityResult> {
+
         const data =
             await this.giveawayRepository
                 .findByIdWithPartner(
                     giveawayId,
                 );
 
+
         if (!data) {
             return {
                 eligible: false,
-                reason: "GIVEAWAY_NOT_FOUND",
+                reason:
+                    "GIVEAWAY_NOT_FOUND",
             };
         }
+
 
         const {
             giveaway,
             partner,
         } = data;
+
 
         if (
             giveaway.status !==
@@ -47,9 +58,11 @@ export class EligibilityService {
         ) {
             return {
                 eligible: false,
-                reason: "GIVEAWAY_NOT_ACTIVE",
+                reason:
+                    "GIVEAWAY_NOT_ACTIVE",
             };
         }
+
 
         if (
             giveaway.endsAt.getTime() <=
@@ -57,9 +70,11 @@ export class EligibilityService {
         ) {
             return {
                 eligible: false,
-                reason: "GIVEAWAY_ENDED",
+                reason:
+                    "GIVEAWAY_ENDED",
             };
         }
+
 
         const player =
             await this.casinoData
@@ -67,12 +82,15 @@ export class EligibilityService {
                     playerId,
                 );
 
+
         if (!player) {
             return {
                 eligible: false,
-                reason: "PLAYER_NOT_FOUND",
+                reason:
+                    "PLAYER_NOT_FOUND",
             };
         }
+
 
         if (
             giveaway.requireAffiliate &&
@@ -81,9 +99,11 @@ export class EligibilityService {
         ) {
             return {
                 eligible: false,
-                reason: "WRONG_AFFILIATE",
+                reason:
+                    "WRONG_AFFILIATE",
             };
         }
+
 
         if (
             giveaway.requireFirstDeposit &&
@@ -91,21 +111,43 @@ export class EligibilityService {
         ) {
             return {
                 eligible: false,
-                reason: "NO_FIRST_DEPOSIT",
+                reason:
+                    "NO_FIRST_DEPOSIT",
             };
         }
 
+
+        /*
+         * Casino data stores
+         * firstDepositAmount in USD.
+         *
+         * Giveaway condition is entered
+         * by partner in RUB.
+         *
+         * Fixed conversion rate:
+         * 1 USD = 84 RUB.
+         */
         if (
-            giveaway.requireFirstDeposit &&
-            player.firstDepositAmount <
-                giveaway.minFirstDepositAmount
+            giveaway.requireFirstDeposit
         ) {
-            return {
-                eligible: false,
-                reason:
-                    "FIRST_DEPOSIT_TOO_SMALL",
-            };
+
+            const firstDepositRub =
+                player.firstDepositAmount *
+                USD_TO_RUB_RATE;
+
+
+            if (
+                firstDepositRub <
+                giveaway.minFirstDepositAmount
+            ) {
+                return {
+                    eligible: false,
+                    reason:
+                        "FIRST_DEPOSIT_TOO_SMALL",
+                };
+            }
         }
+
 
         return {
             eligible: true,

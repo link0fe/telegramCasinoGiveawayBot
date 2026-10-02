@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../database/db.js";
 import { users } from "../database/schema.js";
 
-const telegramId = "2023169233";
+const telegramId = "8838061131";
 
 const result = await db
     .update(users)

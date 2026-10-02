@@ -417,25 +417,25 @@ ${formatPrize(
      * AFFILIATE
      * =====================================
      */
-    if (
-        giveaway
-            .requireAffiliate
-    ) {
+//     if (
+//         giveaway
+//             .requireAffiliate
+//     ) {
 
-        message +=
-            `
+//         message +=
+//             `
 
-🔗 Для игроков партнёра <b>${escapeHtml(
-                giveaway.partnerName,
-            )}</b>`;
+// 🔗 Для игроков партнёра <b>${escapeHtml(
+//                 giveaway.partnerName,
+//             )}</b>`;
 
-    } else {
+//     } else {
 
-        message +=
-            `
+//         message +=
+//             `
 
-🌍 Доступен всем игрокам`;
-    }
+// 🌍 Доступен всем игрокам`;
+//     }
 
 
     /*

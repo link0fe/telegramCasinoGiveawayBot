@@ -2,18 +2,25 @@ import {
     InlineKeyboard,
     type Bot,
 } from "grammy";
+
 import type {
     BotContext,
 } from "../session/bot-session.js";
+
 import {
     GiveawayService,
 } from "../../modules/giveaways/giveaway.service.js";
+
 import {
     showMainMenu,
 } from "../helpers/show-main-menu.js";
 
+
 const giveawayService =
     new GiveawayService();
+
+
+const PARTICIPANTS_PER_PAGE = 10;
 
 
 function formatStatus(
@@ -56,9 +63,16 @@ function formatDate(
     ).format(date);
 }
 
+
 export function registerPartnerGiveawaysCommand(
     bot: Bot<BotContext>,
 ) {
+
+    /*
+     * =====================================
+     * PARTNER GIVEAWAYS
+     * =====================================
+     */
     bot.callbackQuery(
         "partner:giveaways",
         async (ctx) => {
@@ -153,6 +167,11 @@ export function registerPartnerGiveawaysCommand(
     );
 
 
+    /*
+     * =====================================
+     * GIVEAWAY DETAILS
+     * =====================================
+     */
     bot.callbackQuery(
         /^partner:giveaway:(\d+)$/,
         async (ctx) => {
@@ -189,6 +208,7 @@ export function registerPartnerGiveawaysCommand(
 
                 return;
             }
+
             const [
                 participants,
                 winners,
@@ -197,13 +217,17 @@ export function registerPartnerGiveawaysCommand(
                     giveawayService
                         .getPartnerGiveawayParticipants(
                             giveawayId,
-                            String(ctx.from.id),
+                            String(
+                                ctx.from.id,
+                            ),
                         ),
 
                     giveawayService
                         .getPartnerGiveawayWinners(
                             giveawayId,
-                            String(ctx.from.id),
+                            String(
+                                ctx.from.id,
+                            ),
                         ),
                 ]);
 
@@ -274,7 +298,7 @@ ${
 }
 
 💰 Минимальный FTD:
-${giveaway.minFirstDepositAmount}`,
+${giveaway.minFirstDepositAmount} ₽`,
                 {
                     reply_markup:
                         keyboard,
@@ -282,8 +306,21 @@ ${giveaway.minFirstDepositAmount}`,
             );
         },
     );
+
+
+    /*
+     * =====================================
+     * PARTICIPANTS
+     * =====================================
+     *
+     * Поддерживает:
+     *
+     * partner:giveaway:participants:5
+     * partner:giveaway:participants:5:0
+     * partner:giveaway:participants:5:1
+     */
     bot.callbackQuery(
-        /^partner:giveaway:participants:(\d+)$/,
+        /^partner:giveaway:participants:(\d+)(?::(\d+))?$/,
         async (ctx) => {
             await ctx.answerCallbackQuery();
 
@@ -292,53 +329,135 @@ ${giveaway.minFirstDepositAmount}`,
             }
 
             const giveawayId =
-                Number(ctx.match[1]);
+                Number(
+                    ctx.match[1],
+                );
+
+            const requestedPage =
+                Number(
+                    ctx.match[2] ?? 0,
+                );
 
             try {
                 const participants =
                     await giveawayService
                         .getPartnerGiveawayParticipants(
                             giveawayId,
-                            String(ctx.from.id),
+                            String(
+                                ctx.from.id,
+                            ),
                         );
+
+                const totalPages =
+                    Math.max(
+                        1,
+                        Math.ceil(
+                            participants.length /
+                                PARTICIPANTS_PER_PAGE,
+                        ),
+                    );
+
+                const page =
+                    Math.min(
+                        Math.max(
+                            requestedPage,
+                            0,
+                        ),
+                        totalPages - 1,
+                    );
+
+                const start =
+                    page *
+                    PARTICIPANTS_PER_PAGE;
+
+                const pageParticipants =
+                    participants.slice(
+                        start,
+                        start +
+                            PARTICIPANTS_PER_PAGE,
+                    );
 
                 let message =
                     `👥 Участники
 
-    Всего: ${participants.length}
+Всего: ${participants.length}
+Страница: ${page + 1} / ${totalPages}
 
-    `;
+`;
 
                 if (
-                    participants.length === 0
+                    participants.length ===
+                    0
                 ) {
                     message +=
                         "Участников пока нет.";
                 } else {
                     for (
-                        const participant
-                        of participants
+                        let index = 0;
+                        index <
+                        pageParticipants.length;
+                        index++
                     ) {
-                        message +=
-                            `🎟 Player ID: ${participant.casinoPlayerId}
-    Telegram ID: ${participant.telegramUserId}
-    Дата: ${formatDate(
-        participant.joinedAt,
-    )}
+                        const participant =
+                            pageParticipants[
+                                index
+                            ]!;
 
-    `;
+                        const number =
+                            start +
+                            index +
+                            1;
+
+                        message +=
+                            `${number}. 🎟 Участник
+
+Player ID: ${participant.casinoPlayerId}
+Telegram ID: ${participant.telegramUserId}
+Дата: ${formatDate(
+    participant.joinedAt,
+)}
+
+`;
                     }
                 }
+
+                const keyboard =
+                    new InlineKeyboard();
+
+                if (page > 0) {
+                    keyboard.text(
+                        "⬅️",
+                        `partner:giveaway:participants:${giveawayId}:${page - 1}`,
+                    );
+                }
+
+                keyboard.text(
+                    `${page + 1} / ${totalPages}`,
+                    "partner:participants:noop",
+                );
+
+                if (
+                    page <
+                    totalPages - 1
+                ) {
+                    keyboard.text(
+                        "➡️",
+                        `partner:giveaway:participants:${giveawayId}:${page + 1}`,
+                    );
+                }
+
+                keyboard
+                    .row()
+                    .text(
+                        "⬅️ К розыгрышу",
+                        `partner:giveaway:${giveawayId}`,
+                    );
 
                 await ctx.editMessageText(
                     message,
                     {
                         reply_markup:
-                            new InlineKeyboard()
-                                .text(
-                                    "⬅️ К розыгрышу",
-                                    `partner:giveaway:${giveawayId}`,
-                                ),
+                            keyboard,
                     },
                 );
             } catch (error) {
@@ -354,6 +473,23 @@ ${giveaway.minFirstDepositAmount}`,
         },
     );
 
+
+    /*
+     * Кнопка номера страницы.
+     */
+    bot.callbackQuery(
+        "partner:participants:noop",
+        async (ctx) => {
+            await ctx.answerCallbackQuery();
+        },
+    );
+
+
+    /*
+     * =====================================
+     * WINNERS
+     * =====================================
+     */
     bot.callbackQuery(
         /^partner:giveaway:winners:(\d+)$/,
         async (ctx) => {
@@ -371,15 +507,17 @@ ${giveaway.minFirstDepositAmount}`,
                     await giveawayService
                         .getPartnerGiveawayWinners(
                             giveawayId,
-                            String(ctx.from.id),
+                            String(
+                                ctx.from.id,
+                            ),
                         );
 
                 let message =
                     `🏆 Победители
 
-    Всего: ${winners.length}
+Всего: ${winners.length}
 
-    `;
+`;
 
                 if (
                     winners.length === 0
@@ -388,17 +526,22 @@ ${giveaway.minFirstDepositAmount}`,
                         "Победителей пока нет.";
                 } else {
                     for (
-                        const winner
-                        of winners
+                        let index = 0;
+                        index <
+                        winners.length;
+                        index++
                     ) {
+                        const winner =
+                            winners[index]!;
+
                         message +=
-                            `🏆 Место #${winner.place}
+                            `${index + 1}. 🏆 Победитель
 
-    Player ID: ${winner.casinoPlayerId}
-    💰 Приз: ${winner.prizeAmount} ${winner.currency}
-    🎫 Voucher: ${winner.voucherCode}
+Player ID: ${winner.casinoPlayerId}
+💰 Приз: ${winner.prizeAmount} ${winner.currency}
+🎫 Voucher: ${winner.voucherCode}
 
-    `;
+`;
                     }
                 }
 
@@ -426,6 +569,12 @@ ${giveaway.minFirstDepositAmount}`,
         },
     );
 
+
+    /*
+     * =====================================
+     * BACK
+     * =====================================
+     */
     bot.callbackQuery(
         "partner:giveaways:back",
         async (ctx) => {

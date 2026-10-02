@@ -23,6 +23,9 @@ const giveawayService =
     new GiveawayService();
 
 
+const PARTICIPANTS_PER_PAGE = 10;
+
+
 async function isAdmin(
     ctx: BotContext,
 ) {
@@ -91,6 +94,12 @@ function formatStatus(
 export function registerAdminGiveawaysCommand(
     bot: Bot<BotContext>,
 ) {
+
+    /*
+     * =====================================
+     * ALL GIVEAWAYS
+     * =====================================
+     */
     bot.callbackQuery(
         "admin:giveaways",
         async (ctx) => {
@@ -139,6 +148,9 @@ export function registerAdminGiveawaysCommand(
                         : giveaway.status ===
                           "FINISHED"
                         ? "✅"
+                        : giveaway.status ===
+                          "CANCELLED"
+                        ? "❌"
                         : "⚪";
 
                 keyboard
@@ -168,8 +180,21 @@ export function registerAdminGiveawaysCommand(
         },
     );
 
+
+    /*
+     * =====================================
+     * PARTICIPANTS
+     * =====================================
+     *
+     * Поддерживает:
+     *
+     * admin:giveaway:participants:5
+     * admin:giveaway:participants:5:0
+     * admin:giveaway:participants:5:1
+     * ...
+     */
     bot.callbackQuery(
-        /^admin:giveaway:participants:(\d+)$/,
+        /^admin:giveaway:participants:(\d+)(?::(\d+))?$/,
         async (ctx) => {
             await ctx.answerCallbackQuery();
 
@@ -180,7 +205,14 @@ export function registerAdminGiveawaysCommand(
             }
 
             const giveawayId =
-                Number(ctx.match[1]);
+                Number(
+                    ctx.match[1],
+                );
+
+            const requestedPage =
+                Number(
+                    ctx.match[2] ?? 0,
+                );
 
             try {
                 const participants =
@@ -189,42 +221,110 @@ export function registerAdminGiveawaysCommand(
                             giveawayId,
                         );
 
+                const totalPages =
+                    Math.max(
+                        1,
+                        Math.ceil(
+                            participants.length /
+                                PARTICIPANTS_PER_PAGE,
+                        ),
+                    );
+
+                const page =
+                    Math.min(
+                        Math.max(
+                            requestedPage,
+                            0,
+                        ),
+                        totalPages - 1,
+                    );
+
+                const start =
+                    page *
+                    PARTICIPANTS_PER_PAGE;
+
+                const pageParticipants =
+                    participants.slice(
+                        start,
+                        start +
+                            PARTICIPANTS_PER_PAGE,
+                    );
+
                 let message =
                     `👥 Участники розыгрыша #${giveawayId}
 
-    Всего: ${participants.length}
+Всего: ${participants.length}
+Страница: ${page + 1} / ${totalPages}
 
-    `;
+`;
 
                 if (
-                    participants.length === 0
+                    participants.length ===
+                    0
                 ) {
                     message +=
                         "Участников пока нет.";
                 } else {
                     for (
-                        const participant
-                        of participants
+                        let index = 0;
+                        index <
+                        pageParticipants.length;
+                        index++
                     ) {
+                        const participant =
+                            pageParticipants[
+                                index
+                            ]!;
+
+                        const number =
+                            start +
+                            index +
+                            1;
+
                         message +=
-                            `🎟 #${participant.id}
+                            `${number}. 🎟 Участник #${participant.id}
 
-    Telegram ID: ${participant.telegramUserId}
-    Player ID: ${participant.casinoPlayerId}
-    Дата участия: ${formatDate(
-        participant.joinedAt,
-    )}
+Telegram ID: ${participant.telegramUserId}
+Player ID: ${participant.casinoPlayerId}
+Дата участия: ${formatDate(
+    participant.joinedAt,
+)}
 
-    `;
+`;
                     }
                 }
 
                 const keyboard =
-                    new InlineKeyboard()
-                        .text(
-                            "⬅️ К розыгрышу",
-                            `admin:giveaway:${giveawayId}`,
-                        );
+                    new InlineKeyboard();
+
+                if (page > 0) {
+                    keyboard.text(
+                        "⬅️",
+                        `admin:giveaway:participants:${giveawayId}:${page - 1}`,
+                    );
+                }
+
+                keyboard.text(
+                    `${page + 1} / ${totalPages}`,
+                    "admin:participants:noop",
+                );
+
+                if (
+                    page <
+                    totalPages - 1
+                ) {
+                    keyboard.text(
+                        "➡️",
+                        `admin:giveaway:participants:${giveawayId}:${page + 1}`,
+                    );
+                }
+
+                keyboard
+                    .row()
+                    .text(
+                        "⬅️ К розыгрышу",
+                        `admin:giveaway:${giveawayId}`,
+                    );
 
                 await ctx.editMessageText(
                     message,
@@ -233,7 +333,6 @@ export function registerAdminGiveawaysCommand(
                             keyboard,
                     },
                 );
-
             } catch (error) {
                 console.error(
                     "Admin participants error:",
@@ -247,6 +346,24 @@ export function registerAdminGiveawaysCommand(
         },
     );
 
+
+    /*
+     * Нажатие на кнопку "1 / 7".
+     * Ничего не делает.
+     */
+    bot.callbackQuery(
+        "admin:participants:noop",
+        async (ctx) => {
+            await ctx.answerCallbackQuery();
+        },
+    );
+
+
+    /*
+     * =====================================
+     * WINNERS
+     * =====================================
+     */
     bot.callbackQuery(
         /^admin:giveaway:winners:(\d+)$/,
         async (ctx) => {
@@ -271,9 +388,9 @@ export function registerAdminGiveawaysCommand(
                 let message =
                     `🏆 Победители розыгрыша #${giveawayId}
 
-    Всего: ${winners.length}
+Всего: ${winners.length}
 
-    `;
+`;
 
                 if (
                     winners.length === 0
@@ -282,19 +399,24 @@ export function registerAdminGiveawaysCommand(
                         "Победителей пока нет.";
                 } else {
                     for (
-                        const winner
-                        of winners
+                        let index = 0;
+                        index <
+                        winners.length;
+                        index++
                     ) {
+                        const winner =
+                            winners[index]!;
+
                         message +=
-                            `🏆 Место #${winner.place}
+                            `${index + 1}. 🏆 Победитель
 
-    Player ID: ${winner.casinoPlayerId}
-    Telegram ID: ${winner.telegramUserId}
+Player ID: ${winner.casinoPlayerId}
+Telegram ID: ${winner.telegramUserId}
 
-    💰 Приз: ${winner.prizeAmount} ${winner.currency}
-    🎫 Voucher: ${winner.voucherCode}
+💰 Приз: ${winner.prizeAmount} ${winner.currency}
+🎫 Voucher: ${winner.voucherCode}
 
-    `;
+`;
                     }
                 }
 
@@ -312,7 +434,6 @@ export function registerAdminGiveawaysCommand(
                             keyboard,
                     },
                 );
-
             } catch (error) {
                 console.error(
                     "Admin winners error:",
@@ -326,6 +447,12 @@ export function registerAdminGiveawaysCommand(
         },
     );
 
+
+    /*
+     * =====================================
+     * GIVEAWAY DETAILS
+     * =====================================
+     */
     bot.callbackQuery(
         /^admin:giveaway:(\d+)$/,
         async (ctx) => {
@@ -420,13 +547,16 @@ ${giveaway.actualWinnersCount} / ${
     );
 
 
+    /*
+     * =====================================
+     * BACK
+     * =====================================
+     */
     bot.callbackQuery(
         "admin:giveaways:back",
         async (ctx) => {
             await ctx.answerCallbackQuery();
 
-            // Возвращаемся через callback
-            // главного ADMIN-меню.
             await ctx.editMessageText(
                 "🏠 Главное меню",
                 {
@@ -455,7 +585,7 @@ ${giveaway.actualWinnersCount} / ${
                             .text(
                                 "👤 Профиль",
                                 "profile",
-                            )
+                            ),
                 },
             );
         },
