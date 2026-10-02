@@ -4,10 +4,10 @@ import {
     users,
     partners,
     giveaways,
-    giveawayPrizes,
     participants,
     winners,
-    casinoPlayers
+    casinoPlayers,
+    vouchers
 } from "../database/schema.js";
 
 
@@ -20,9 +20,6 @@ const allPartners =
 const allGiveaways =
     await db.select().from(giveaways);
 
-const allPrizes =
-    await db.select().from(giveawayPrizes);
-
 const allParticipants =
     await db.select().from(participants);
 
@@ -31,6 +28,12 @@ const allWinners =
 
 const allCasinoPlayers =
     await db.select().from(casinoPlayers);
+
+const allVouchers =
+    await db.select().from(vouchers);
+
+console.log("\n=== VOUCHERS ===",);
+console.table(allVouchers,);
 
 console.log("\n=== USERS ===");
 console.table(allUsers);
@@ -41,8 +44,6 @@ console.table(allPartners);
 console.log("\n=== GIVEAWAYS ===");
 console.table(allGiveaways);
 
-console.log("\n=== GIVEAWAY PRIZES ===");
-console.table(allPrizes);
 
 console.log("\n=== PARTICIPANTS ===");
 console.table(allParticipants);

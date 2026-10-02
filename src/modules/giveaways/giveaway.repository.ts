@@ -2,18 +2,26 @@ import {
     and,
     desc,
     eq,
+    gt,
     lte,
+    or,
     sql,
 } from "drizzle-orm";
-import { db } from "../../database/db.js";
+
+import {
+    db,
+} from "../../database/db.js";
+
 import {
     users,
     partners,
     giveaways,
-    giveawayPrizes,
     participants,
     winners,
+    playerAccounts,
+    casinoPlayers,
 } from "../../database/schema.js";
+
 import type {
     CreateGiveawayData,
 } from "./giveaway.types.js";
@@ -21,7 +29,14 @@ import type {
 
 export class GiveawayRepository {
 
-    async findParticipantsForAdmin( giveawayId: number,) {
+    /*
+     * =====================================
+     * ADMIN PARTICIPANTS
+     * =====================================
+     */
+    async findParticipantsForAdmin(
+        giveawayId: number,
+    ) {
         return await db
             .select({
                 id:
@@ -36,7 +51,9 @@ export class GiveawayRepository {
                 joinedAt:
                     participants.joinedAt,
             })
-            .from(participants)
+            .from(
+                participants,
+            )
             .where(
                 eq(
                     participants.giveawayId,
@@ -48,7 +65,15 @@ export class GiveawayRepository {
             );
     }
 
-    async findWinnersForAdmin( giveawayId: number ) {
+
+    /*
+     * =====================================
+     * ADMIN WINNERS
+     * =====================================
+     */
+    async findWinnersForAdmin(
+        giveawayId: number,
+    ) {
         return await db
             .select({
                 id:
@@ -75,7 +100,9 @@ export class GiveawayRepository {
                 casinoPlayerId:
                     participants.casinoPlayerId,
             })
-            .from(winners)
+            .from(
+                winners,
+            )
             .innerJoin(
                 participants,
                 eq(
@@ -94,7 +121,15 @@ export class GiveawayRepository {
             );
     }
 
-    async countParticipants(giveawayId: number,) {
+
+    /*
+     * =====================================
+     * COUNT PARTICIPANTS
+     * =====================================
+     */
+    async countParticipants(
+        giveawayId: number,
+    ) {
         const result =
             await db
                 .select({
@@ -103,7 +138,9 @@ export class GiveawayRepository {
                             count(*)
                         `,
                 })
-                .from(participants)
+                .from(
+                    participants,
+                )
                 .where(
                     eq(
                         participants.giveawayId,
@@ -111,12 +148,21 @@ export class GiveawayRepository {
                     ),
                 );
 
+
         return Number(
             result[0]?.count ?? 0,
         );
     }
 
-    async countWinners(giveawayId: number,) {
+
+    /*
+     * =====================================
+     * COUNT WINNERS
+     * =====================================
+     */
+    async countWinners(
+        giveawayId: number,
+    ) {
         const result =
             await db
                 .select({
@@ -125,7 +171,9 @@ export class GiveawayRepository {
                             count(*)
                         `,
                 })
-                .from(winners)
+                .from(
+                    winners,
+                )
                 .where(
                     eq(
                         winners.giveawayId,
@@ -133,11 +181,18 @@ export class GiveawayRepository {
                     ),
                 );
 
+
         return Number(
             result[0]?.count ?? 0,
         );
     }
 
+
+    /*
+     * =====================================
+     * ADMIN GIVEAWAYS
+     * =====================================
+     */
     async findAllForAdmin() {
         return await db
             .select({
@@ -162,6 +217,12 @@ export class GiveawayRepository {
                 winnersCount:
                     giveaways.winnersCount,
 
+                prizeAmount:
+                    giveaways.prizeAmount,
+
+                currency:
+                    giveaways.currency,
+
                 partnerId:
                     partners.id,
 
@@ -171,7 +232,9 @@ export class GiveawayRepository {
                 affiliateId:
                     partners.affiliateId,
             })
-            .from(giveaways)
+            .from(
+                giveaways,
+            )
             .innerJoin(
                 partners,
                 eq(
@@ -183,19 +246,257 @@ export class GiveawayRepository {
                 desc(
                     giveaways.createdAt,
                 ),
+            )
+            .limit(
+                10,
             );
     }
 
+
+    /*
+     * =====================================
+     * LINKED CASINO PLAYER
+     * =====================================
+     */
+    async findLinkedCasinoPlayer(
+        telegramUserId: string,
+    ) {
+        const result =
+            await db
+                .select({
+                    userId:
+                        users.id,
+
+                    telegramId:
+                        users.telegramId,
+
+                    casinoPlayerId:
+                        casinoPlayers.id,
+
+                    playerId:
+                        casinoPlayers.playerId,
+
+                    affiliateId:
+                        casinoPlayers.affiliateId,
+
+                    affiliateName:
+                        casinoPlayers.affiliateName,
+                })
+                .from(
+                    users,
+                )
+                .innerJoin(
+                    playerAccounts,
+                    eq(
+                        playerAccounts.userId,
+                        users.id,
+                    ),
+                )
+                .innerJoin(
+                    casinoPlayers,
+                    eq(
+                        playerAccounts.casinoPlayerId,
+                        casinoPlayers.id,
+                    ),
+                )
+                .where(
+                    eq(
+                        users.telegramId,
+                        telegramUserId,
+                    ),
+                )
+                .limit(1);
+
+
+        return result[0] ?? null;
+    }
+
+
+    /*
+     * =====================================
+     * PLAYER PARTICIPATION
+     * =====================================
+     */
+    async findPlayerParticipation(
+        giveawayId: number,
+        telegramUserId: string,
+    ) {
+        const result =
+            await db
+                .select({
+                    id:
+                        participants.id,
+
+                    giveawayId:
+                        participants.giveawayId,
+
+                    telegramUserId:
+                        participants.telegramUserId,
+
+                    casinoPlayerId:
+                        participants.casinoPlayerId,
+
+                    joinedAt:
+                        participants.joinedAt,
+                })
+                .from(
+                    participants,
+                )
+                .where(
+                    and(
+                        eq(
+                            participants.giveawayId,
+                            giveawayId,
+                        ),
+
+                        eq(
+                            participants.telegramUserId,
+                            telegramUserId,
+                        ),
+                    ),
+                )
+                .limit(1);
+
+
+        return result[0] ?? null;
+    }
+
+
+    /*
+     * =====================================
+     * ACTIVE GIVEAWAYS FOR PLAYER
+     * =====================================
+     */
+    async findActiveForPlayer(
+        affiliateId?: string,
+    ) {
+
+        const conditions = [
+            eq(
+                giveaways.status,
+                "ACTIVE",
+            ),
+
+            gt(
+                giveaways.endsAt,
+                new Date(),
+            ),
+
+            eq(
+                partners.isActive,
+                true,
+            ),
+        ];
+
+
+        /*
+         * Если Player ID уже привязан,
+         * показываем:
+         *
+         * 1. giveaways без affiliate requirement
+         * 2. giveaways его affiliate
+         */
+        if (affiliateId) {
+
+            conditions.push(
+                or(
+                    eq(
+                        giveaways.requireAffiliate,
+                        false,
+                    ),
+
+                    eq(
+                        partners.affiliateId,
+                        affiliateId,
+                    ),
+                )!,
+            );
+        }
+
+
+        return await db
+            .select({
+                id:
+                    giveaways.id,
+
+                title:
+                    giveaways.title,
+
+                status:
+                    giveaways.status,
+
+                startsAt:
+                    giveaways.startsAt,
+
+                endsAt:
+                    giveaways.endsAt,
+
+                winnersCount:
+                    giveaways.winnersCount,
+
+                prizeAmount:
+                    giveaways.prizeAmount,
+
+                currency:
+                    giveaways.currency,
+
+                requireAffiliate:
+                    giveaways.requireAffiliate,
+
+                requireFirstDeposit:
+                    giveaways.requireFirstDeposit,
+
+                minFirstDepositAmount:
+                    giveaways.minFirstDepositAmount,
+
+                partnerId:
+                    partners.id,
+
+                partnerName:
+                    partners.name,
+
+                affiliateId:
+                    partners.affiliateId,
+            })
+            .from(
+                giveaways,
+            )
+            .innerJoin(
+                partners,
+                eq(
+                    giveaways.partnerId,
+                    partners.id,
+                ),
+            )
+            .where(
+                and(
+                    ...conditions,
+                ),
+            )
+            .orderBy(
+                giveaways.endsAt,
+            );
+    }
+
+
+    /*
+     * =====================================
+     * EXPIRED ACTIVE GIVEAWAYS
+     * =====================================
+     */
     async findExpiredActive() {
-        return db
+        return await db
             .select()
-            .from(giveaways)
+            .from(
+                giveaways,
+            )
             .where(
                 and(
                     eq(
                         giveaways.status,
                         "ACTIVE",
                     ),
+
                     lte(
                         giveaways.endsAt,
                         new Date(),
@@ -204,27 +505,39 @@ export class GiveawayRepository {
             );
     }
 
-    async findPartnerTelegramId( partnerId: number,) {
-        const result = await db
-            .select({
-                telegramId:
-                    users.telegramId,
-            })
-            .from(partners)
-            .innerJoin(
-                users,
-                eq(
-                    partners.userId,
-                    users.id,
-                ),
-            )
-            .where(
-                eq(
-                    partners.id,
-                    partnerId,
-                ),
-            )
-            .limit(1);
+
+    /*
+     * =====================================
+     * PARTNER TELEGRAM ID
+     * =====================================
+     */
+    async findPartnerTelegramId(
+        partnerId: number,
+    ) {
+        const result =
+            await db
+                .select({
+                    telegramId:
+                        users.telegramId,
+                })
+                .from(
+                    partners,
+                )
+                .innerJoin(
+                    users,
+                    eq(
+                        partners.userId,
+                        users.id,
+                    ),
+                )
+                .where(
+                    eq(
+                        partners.id,
+                        partnerId,
+                    ),
+                )
+                .limit(1);
+
 
         return (
             result[0]?.telegramId ??
@@ -232,74 +545,148 @@ export class GiveawayRepository {
         );
     }
 
-    async findByIdWithPartner(giveawayId: number) {
-        const result = await db
-            .select({
-                giveaway: giveaways,
-                partner: partners,
-            })
-            .from(giveaways)
-            .innerJoin(partners, eq(giveaways.partnerId, partners.id))
-            .where(
-                eq(giveaways.id, giveawayId),
-            )
-            .limit(1);
+
+    /*
+     * =====================================
+     * GIVEAWAY + PARTNER
+     * =====================================
+     */
+    async findByIdWithPartner(
+        giveawayId: number,
+    ) {
+        const result =
+            await db
+                .select({
+                    giveaway:
+                        giveaways,
+
+                    partner:
+                        partners,
+                })
+                .from(
+                    giveaways,
+                )
+                .innerJoin(
+                    partners,
+                    eq(
+                        giveaways.partnerId,
+                        partners.id,
+                    ),
+                )
+                .where(
+                    eq(
+                        giveaways.id,
+                        giveawayId,
+                    ),
+                )
+                .limit(1);
+
+
         return result[0] ?? null;
     }
 
-    async findById(giveawayId: number) {
-        const result = await db
-            .select()
-            .from(giveaways)
-            .where(
-                eq(giveaways.id, giveawayId),
-            )
-            .limit(1);
+
+    /*
+     * =====================================
+     * GIVEAWAY BY ID
+     * =====================================
+     */
+    async findById(
+        giveawayId: number,
+    ) {
+        const result =
+            await db
+                .select()
+                .from(
+                    giveaways,
+                )
+                .where(
+                    eq(
+                        giveaways.id,
+                        giveawayId,
+                    ),
+                )
+                .limit(1);
+
 
         return result[0] ?? null;
     }
 
+
+    /*
+     * =====================================
+     * PARTNER BY TELEGRAM
+     * =====================================
+     */
     async findPartnerByTelegramId(
         telegramId: string,
     ) {
-        const result = await db
-            .select({
-                partner: partners,
-                user: users,
-            })
-            .from(partners)
-            .innerJoin(
-                users,
-                eq(partners.userId, users.id),
-            )
-            .where(
-                eq(users.telegramId, telegramId),
-            )
-            .limit(1);
+        const result =
+            await db
+                .select({
+                    partner:
+                        partners,
+
+                    user:
+                        users,
+                })
+                .from(
+                    partners,
+                )
+                .innerJoin(
+                    users,
+                    eq(
+                        partners.userId,
+                        users.id,
+                    ),
+                )
+                .where(
+                    eq(
+                        users.telegramId,
+                        telegramId,
+                    ),
+                )
+                .limit(1);
+
 
         return result[0] ?? null;
     }
 
 
+    /*
+     * =====================================
+     * CREATE GIVEAWAY
+     * =====================================
+     */
     async create(
         partnerId: number,
         data: CreateGiveawayData,
     ) {
-        return db.transaction((tx) => {
-
-            const giveawayResult = tx
-                .insert(giveaways)
+        const result =
+            await db
+                .insert(
+                    giveaways,
+                )
                 .values({
                     partnerId,
 
-                    title: data.title,
+                    title:
+                        data.title,
 
-                    status: "ACTIVE",
+                    status:
+                        "ACTIVE",
 
-                    endsAt: data.endsAt,
+                    endsAt:
+                        data.endsAt,
 
                     winnersCount:
                         data.winnersCount,
+
+                    prizeAmount:
+                        data.prizeAmount,
+
+                    currency:
+                        data.currency,
 
                     requireAffiliate:
                         data.requireAffiliate,
@@ -309,53 +696,42 @@ export class GiveawayRepository {
 
                     minFirstDepositAmount:
                         data.minFirstDepositAmount,
-                        
+
                     requireChannelSubscription:
                         data.requireChannelSubscription,
 
                     channelUsername:
                         data.channelUsername,
                 })
-                .returning()
-                .all();
-
-            const giveaway =
-                giveawayResult[0];
-
-            if (!giveaway) {
-                throw new Error(
-                    "GIVEAWAY_CREATE_FAILED",
-                );
-            }
+                .returning();
 
 
-            if (data.prizes.length > 0) {
-                tx.insert(giveawayPrizes)
-                    .values(
-                        data.prizes.map(
-                            (prize) => ({
-                                giveawayId:
-                                    giveaway.id,
-
-                                place:
-                                    prize.place,
-
-                                amount:
-                                    prize.amount,
-
-                                currency:
-                                    prize.currency,
-                            }),
-                        ),
-                    )
-                    .run();
-            }
+        const giveaway =
+            result[0];
 
 
-            return giveaway;
-        });
+        if (!giveaway) {
+            throw new Error(
+                "GIVEAWAY_CREATE_FAILED",
+            );
+        }
+
+
+        return giveaway;
     }
-    async findAllByPartnerTelegramId(telegramId: string,) {
+
+
+    /*
+     * =====================================
+     * PARTNER GIVEAWAYS
+     * =====================================
+     *
+     * Показываем только последние
+     * 10 розыгрышей партнёра.
+     */
+    async findAllByPartnerTelegramId(
+        telegramId: string,
+    ) {
         return await db
             .select({
                 id:
@@ -379,6 +755,12 @@ export class GiveawayRepository {
                 winnersCount:
                     giveaways.winnersCount,
 
+                prizeAmount:
+                    giveaways.prizeAmount,
+
+                currency:
+                    giveaways.currency,
+
                 requireAffiliate:
                     giveaways.requireAffiliate,
 
@@ -388,7 +770,9 @@ export class GiveawayRepository {
                 minFirstDepositAmount:
                     giveaways.minFirstDepositAmount,
             })
-            .from(giveaways)
+            .from(
+                giveaways,
+            )
             .innerJoin(
                 partners,
                 eq(
@@ -409,6 +793,7 @@ export class GiveawayRepository {
                         users.telegramId,
                         telegramId,
                     ),
+
                     eq(
                         partners.isActive,
                         true,
@@ -419,8 +804,18 @@ export class GiveawayRepository {
                 desc(
                     giveaways.createdAt,
                 ),
+            )
+            .limit(
+                10,
             );
     }
+
+
+    /*
+     * =====================================
+     * PARTNER GIVEAWAY ACCESS
+     * =====================================
+     */
     async findPartnerGiveawayByTelegramId(
         giveawayId: number,
         telegramId: string,
@@ -439,8 +834,19 @@ export class GiveawayRepository {
 
                     partnerId:
                         giveaways.partnerId,
+
+                    winnersCount:
+                        giveaways.winnersCount,
+
+                    prizeAmount:
+                        giveaways.prizeAmount,
+
+                    currency:
+                        giveaways.currency,
                 })
-                .from(giveaways)
+                .from(
+                    giveaways,
+                )
                 .innerJoin(
                     partners,
                     eq(
@@ -461,10 +867,12 @@ export class GiveawayRepository {
                             giveaways.id,
                             giveawayId,
                         ),
+
                         eq(
                             users.telegramId,
                             telegramId,
                         ),
+
                         eq(
                             partners.isActive,
                             true,
@@ -472,6 +880,7 @@ export class GiveawayRepository {
                     ),
                 )
                 .limit(1);
+
 
         return result[0] ?? null;
     }

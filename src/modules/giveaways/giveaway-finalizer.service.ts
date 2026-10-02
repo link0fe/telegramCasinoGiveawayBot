@@ -1,8 +1,14 @@
-import type { Bot } from "grammy";
+import type {
+    Bot,
+} from "grammy";
 
 import type {
     BotContext,
 } from "../../telegram/session/bot-session.js";
+
+import {
+    emoji,
+} from "../../telegram/ui/emojis.js";
 
 import {
     WinnerService,
@@ -14,6 +20,7 @@ import {
 
 
 export class GiveawayFinalizerService {
+
     constructor(
         private readonly bot:
             Bot<BotContext>,
@@ -63,7 +70,9 @@ export class GiveawayFinalizerService {
         } = giveawayData;
 
 
-        // Победители
+        /*
+         * Уведомляем победителей.
+         */
         for (
             const winner
             of result.winners
@@ -72,15 +81,25 @@ export class GiveawayFinalizerService {
                 await this.bot.api
                     .sendMessage(
                         winner.telegramUserId,
-                        `🎉 Поздравляем!
-Вы победили в розыгрыше:
 
-🎁 ${giveaway.title}
+                        `${emoji("party")} <b>ПОЗДРАВЛЯЕМ!</b>
 
-💰 Приз: ${winner.prizeAmount} ${winner.currency}
+Вы победили в розыгрыше!
 
-🎟 Voucher:
-${winner.voucherCode}`,
+${emoji("slots")} <b>${giveaway.title}</b>
+
+${emoji("diamond")} Ваш выигрыш:
+<b>${winner.prizeAmount} ${winner.currency}</b>
+
+${emoji("gift")} <b>Ваш Voucher:</b>
+<code>${winner.voucherCode}</code>
+
+${emoji("luckyCat")} Удача сегодня на вашей стороне!`,
+
+                        {
+                            parse_mode:
+                                "HTML",
+                        },
                     );
             } catch (error) {
                 console.error(
@@ -91,8 +110,9 @@ ${winner.voucherCode}`,
         }
 
 
-        // Результат партнёру
-
+        /*
+         * Результат партнёру.
+         */
         const partnerTelegramId =
             await this.giveawayRepository
                 .findPartnerTelegramId(
@@ -102,34 +122,47 @@ ${winner.voucherCode}`,
 
         if (partnerTelegramId) {
             let message =
-                `🏁 Розыгрыш завершён!
-                🎁 ${giveaway.title}`;
+                `🏁 <b>Розыгрыш завершён!</b>
+
+🎁 <b>${giveaway.title}</b>
+
+`;
 
 
-            if (result.winners.length === 0) {
+            if (
+                result.winners.length === 0
+            ) {
                 message +=
-                    "👥 В розыгрыше не было участников.\n";
+                    "👥 В розыгрыше не было участников.";
             } else {
                 message +=
-                    `🏆 Победители: ${result.winners.length}\n\n`;
+                    `🏆 Победителей: <b>${result.winners.length}</b>
+
+`;
+
 
                 for (
                     const winner
                     of result.winners
                 ) {
                     message +=
-                        `${winner.place} место\n` +
-                        `Player ID: ${winner.casinoPlayerId}\n` +
-                        `Приз: ${winner.prizeAmount} ${winner.currency}\n` +
-                        `Voucher: ${winner.voucherCode}\n\n`;
+                        `🏅 <b>Победитель</b>\n` +
+                        `Player ID: <code>${winner.casinoPlayerId}</code>\n` +
+                        `Приз: <b>${winner.prizeAmount} ${winner.currency}</b>\n` +
+                        `Voucher: <code>${winner.voucherCode}</code>\n\n`;
                 }
             }
+
 
             try {
                 await this.bot.api
                     .sendMessage(
                         partnerTelegramId,
                         message,
+                        {
+                            parse_mode:
+                                "HTML",
+                        },
                     );
             } catch (error) {
                 console.error(
@@ -138,8 +171,6 @@ ${winner.voucherCode}`,
                 );
             }
         }
-
-        
 
 
         return result;

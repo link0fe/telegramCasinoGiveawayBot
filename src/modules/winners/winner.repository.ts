@@ -4,10 +4,11 @@ import {
     eq,
 } from "drizzle-orm";
 
-import { db } from "../../database/db.js";
+import {
+    db,
+} from "../../database/db.js";
 
 import {
-    giveawayPrizes,
     giveaways,
     participants,
     vouchers,
@@ -17,30 +18,46 @@ import {
 
 export class WinnerRepository {
 
+    /*
+     * =====================================
+     * GIVEAWAY
+     * =====================================
+     */
     async findGiveaway(
         giveawayId: number,
     ) {
-        const result = await db
-            .select()
-            .from(giveaways)
-            .where(
-                eq(
-                    giveaways.id,
-                    giveawayId,
-                ),
-            )
-            .limit(1);
+        const result =
+            await db
+                .select()
+                .from(
+                    giveaways,
+                )
+                .where(
+                    eq(
+                        giveaways.id,
+                        giveawayId,
+                    ),
+                )
+                .limit(1);
+
 
         return result[0] ?? null;
     }
 
 
+    /*
+     * =====================================
+     * PARTICIPANTS
+     * =====================================
+     */
     async findParticipants(
         giveawayId: number,
     ) {
-        return db
+        return await db
             .select()
-            .from(participants)
+            .from(
+                participants,
+            )
             .where(
                 eq(
                     participants.giveawayId,
@@ -50,32 +67,19 @@ export class WinnerRepository {
     }
 
 
-    async findPrizes(
-        giveawayId: number,
-    ) {
-        return db
-            .select()
-            .from(giveawayPrizes)
-            .where(
-                eq(
-                    giveawayPrizes.giveawayId,
-                    giveawayId,
-                ),
-            )
-            .orderBy(
-                asc(
-                    giveawayPrizes.place,
-                ),
-            );
-    }
-
-
+    /*
+     * =====================================
+     * EXISTING WINNERS
+     * =====================================
+     */
     async findWinners(
         giveawayId: number,
     ) {
-        return db
+        return await db
             .select()
-            .from(winners)
+            .from(
+                winners,
+            )
             .where(
                 eq(
                     winners.giveawayId,
@@ -90,6 +94,62 @@ export class WinnerRepository {
     }
 
 
+    /*
+     * =====================================
+     * AVAILABLE VOUCHERS
+     * =====================================
+     *
+     * Получаем только свободные ваучеры
+     * нужного номинала и валюты.
+     *
+     * limit = сколько ваучеров
+     * требуется для победителей.
+     */
+    async findAvailableVouchers(
+        amount: number,
+        currency: string,
+        limit: number,
+    ) {
+        return await db
+            .select()
+            .from(
+                vouchers,
+            )
+            .where(
+                and(
+                    eq(
+                        vouchers.amount,
+                        amount,
+                    ),
+
+                    eq(
+                        vouchers.currency,
+                        currency,
+                    ),
+
+                    eq(
+                        vouchers.isUsed,
+                        false,
+                    ),
+                ),
+            )
+            .limit(
+                limit,
+            );
+    }
+
+
+    /*
+     * =====================================
+     * SAVE WINNERS + USE VOUCHERS
+     * =====================================
+     *
+     * Всё выполняется в одной transaction.
+     *
+     * Если хотя бы один voucher уже занят
+     * или winner не создаётся —
+     * вся операция откатывается.
+     */
     async saveWinnersAndFinish(
         giveawayId: number,
         winnerData: {
@@ -103,29 +163,43 @@ export class WinnerRepository {
     ) {
         return db.transaction(
             (tx) => {
+
                 const savedWinners = [];
+
 
                 for (
                     const item
                     of winnerData
                 ) {
+
+                    /*
+                     * Создаём winner.
+                     */
                     const winner =
-                        tx.insert(winners)
+                        tx.insert(
+                            winners,
+                        )
                             .values({
                                 giveawayId,
+
                                 participantId:
                                     item.participantId,
+
                                 place:
                                     item.place,
+
                                 prizeAmount:
                                     item.prizeAmount,
+
                                 currency:
                                     item.currency,
+
                                 voucherCode:
                                     item.voucherCode,
                             })
                             .returning()
                             .get();
+
 
                     if (!winner) {
                         throw new Error(
@@ -133,12 +207,25 @@ export class WinnerRepository {
                         );
                     }
 
+
+                    /*
+                     * Помечаем voucher использованным.
+                     *
+                     * Дополнительно проверяем isUsed=false,
+                     * чтобы нельзя было случайно
+                     * выдать один voucher дважды.
+                     */
                     const voucher =
-                        tx.update(vouchers)
+                        tx.update(
+                            vouchers,
+                        )
                             .set({
-                                isUsed: true,
+                                isUsed:
+                                    true,
+
                                 winnerId:
                                     winner.id,
+
                                 usedAt:
                                     new Date(),
                             })
@@ -148,6 +235,7 @@ export class WinnerRepository {
                                         vouchers.id,
                                         item.voucherId,
                                     ),
+
                                     eq(
                                         vouchers.isUsed,
                                         false,
@@ -157,24 +245,35 @@ export class WinnerRepository {
                             .returning()
                             .get();
 
+
                     if (!voucher) {
                         throw new Error(
                             `VOUCHER_ALREADY_USED:${item.voucherId}`,
                         );
                     }
 
+
                     savedWinners.push({
                         ...winner,
+
                         telegramVoucherCode:
                             voucher.code,
                     });
                 }
 
 
-                tx.update(giveaways)
+                /*
+                 * Только после успешного
+                 * создания всех winners
+                 * завершаем giveaway.
+                 */
+                tx.update(
+                    giveaways,
+                )
                     .set({
                         status:
                             "FINISHED",
+
                         updatedAt:
                             new Date(),
                     })

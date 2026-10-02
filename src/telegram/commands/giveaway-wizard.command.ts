@@ -14,7 +14,10 @@ import {
 import type {
     BotContext,
 } from "../session/bot-session.js";
-import { showMainMenu } from "../helpers/show-main-menu.js";
+
+import {
+    showMainMenu,
+} from "../helpers/show-main-menu.js";
 
 
 const giveawayService =
@@ -28,16 +31,25 @@ export function registerGiveawayWizard(
     bot: Bot<BotContext>,
 ) {
 
+    /*
+     * =========================
+     * START CREATE GIVEAWAY
+     * =========================
+     */
     bot.callbackQuery(
         "partner:create-giveaway",
         async (ctx) => {
+
             await ctx.answerCallbackQuery();
+
 
             const user =
                 await userService
                     .getOrCreateTelegramUser({
                         telegramId:
-                            String(ctx.from.id),
+                            String(
+                                ctx.from.id,
+                            ),
 
                         username:
                             ctx.from.username,
@@ -46,11 +58,13 @@ export function registerGiveawayWizard(
                             ctx.from.first_name,
                     });
 
+
             if (
                 !user ||
                 user.role !==
                     "PARTNER"
-            ){
+            ) {
+
                 await ctx.reply(
                     "⛔ Создавать розыгрыши может только партнер.",
                 );
@@ -58,41 +72,74 @@ export function registerGiveawayWizard(
                 return;
             }
 
+
+            /*
+             * Не оставляем активным
+             * admin workflow.
+             */
+            delete ctx.session
+                .partnerAdmin;
+
+
             ctx.session.giveawayWizard = {
-                step: "TITLE",
+                step:
+                    "TITLE",
+
                 data: {},
             };
 
+
             await ctx.reply(
-                "🎁 Введи название розыгрыша:",
+                `🎁 Введи название розыгрыша.
+
+/cancel — отменить создание`,
             );
         },
     );
 
 
+    /*
+     * =========================
+     * FIRST DEPOSIT
+     * =========================
+     */
     bot.callbackQuery(
         /^giveaway:first-deposit:(yes|no)$/,
         async (ctx) => {
+
             await ctx.answerCallbackQuery();
+
 
             const wizard =
                 ctx.session
                     .giveawayWizard;
 
+
             if (
                 !wizard ||
                 wizard.step !==
-                "FIRST_DEPOSIT"
+                    "FIRST_DEPOSIT"
             ) {
                 return;
             }
 
-            const requireFirstDeposit =
-                ctx.match[1] === "yes";
 
-            if (requireFirstDeposit) {
+            const requireFirstDeposit =
+                ctx.match[1] ===
+                "yes";
+
+
+            /*
+             * Если FTD обязателен —
+             * спрашиваем минимальную сумму.
+             */
+            if (
+                requireFirstDeposit
+            ) {
+
                 ctx.session.giveawayWizard = {
-                    step: "MIN_FTD",
+                    step:
+                        "MIN_FTD",
 
                     data: {
                         ...wizard.data,
@@ -102,16 +149,27 @@ export function registerGiveawayWizard(
                     },
                 };
 
+
                 await ctx.reply(
-                    "💰 Введи минимальную сумму первого депозита:",
+                    `💰 Введи минимальную сумму первого депозита в рублях.
+
+Например:
+5000`,
                 );
+
 
                 return;
             }
 
 
+            /*
+             * Если FTD не нужен —
+             * сразу переходим
+             * к количеству победителей.
+             */
             ctx.session.giveawayWizard = {
-                step: "CHANNEL_SUBSCRIPTION",
+                step:
+                    "WINNERS",
 
                 data: {
                     ...wizard.data,
@@ -124,130 +182,81 @@ export function registerGiveawayWizard(
                 },
             };
 
-            const keyboard =
-                new InlineKeyboard()
-                    .text(
-                        "✅ Да",
-                        "giveaway:channel:yes",
-                    )
-                    .text(
-                        "❌ Нет",
-                        "giveaway:channel:no",
-                    );
 
             await ctx.reply(
-                "📢 Требовать подписку на Telegram-канал?",
-                {
-                    reply_markup:
-                        keyboard,
-                },
-            );
-        },
-    );
+                `🏆 Сколько будет победителей?
 
-    bot.callbackQuery(
-        "giveaway:channel:no",
-        async (ctx) => {
-            await ctx.answerCallbackQuery();
-
-            const wizard =
-                ctx.session
-                    .giveawayWizard;
-
-            if (
-                !wizard ||
-                wizard.step !==
-                    "CHANNEL_SUBSCRIPTION"
-            ) {
-                return;
-            }
-
-            ctx.session.giveawayWizard = {
-                step: "WINNERS",
-
-                data: {
-                    ...wizard.data,
-
-                    requireChannelSubscription:
-                        false,
-
-                    channelUsername:
-                        null,
-                },
-            };
-
-            await ctx.reply(
-                "🏆 Сколько будет победителей?",
+Например:
+3`,
             );
         },
     );
 
 
-    bot.callbackQuery(
-        "giveaway:channel:yes",
-        async (ctx) => {
-            await ctx.answerCallbackQuery();
-
-            const wizard =
-                ctx.session
-                    .giveawayWizard;
-
-            if (
-                !wizard ||
-                wizard.step !==
-                    "CHANNEL_SUBSCRIPTION"
-            ) {
-                return;
-            }
-
-            ctx.session.giveawayWizard = {
-                step: "CHANNEL_USERNAME",
-
-                data: {
-                    ...wizard.data,
-
-                    requireChannelSubscription:
-                        true,
-                },
-            };
-
-            await ctx.reply(
-                `📢 Отправь username канала.
-
-    Например:
-
-    @my_casino_channel`,
-            );
-        },
-    );
-
-
+    /*
+     * =========================
+     * TEXT WIZARD
+     * =========================
+     */
     bot.on(
         "message:text",
         async (ctx, next) => {
+
             const wizard =
                 ctx.session
                     .giveawayWizard;
 
+
             if (!wizard) {
+
                 await next();
+
                 return;
             }
 
 
             const text =
-                ctx.message.text.trim();
+                ctx.message.text
+                    .trim();
 
 
+            /*
+             * =========================
+             * CANCEL
+             * =========================
+             */
             if (
-                text === "/cancel"
+                text ===
+                "/cancel"
             ) {
+
                 delete ctx.session
                     .giveawayWizard;
+
 
                 await ctx.reply(
                     "❌ Создание розыгрыша отменено.",
                 );
+
+
+                await showMainMenu(
+                    ctx,
+                );
+
+
+                return;
+            }
+
+
+            /*
+             * Остальные команды
+             * wizard не перехватывает.
+             */
+            if (
+                text.startsWith("/")
+            ) {
+
+                await next();
 
                 return;
             }
@@ -257,33 +266,60 @@ export function registerGiveawayWizard(
                 wizard.step
             ) {
 
+                /*
+                 * =========================
+                 * TITLE
+                 * =========================
+                 */
                 case "TITLE": {
+
                     if (
-                        text.startsWith("/")
+                        text.length < 1
                     ) {
-                        await next();
+
+                        await ctx.reply(
+                            "❌ Название не может быть пустым.",
+                        );
+
                         return;
                     }
 
+
                     ctx.session.giveawayWizard = {
-                        step: "DURATION",
+                        step:
+                            "DURATION",
 
                         data: {
-                            title: text,
+                            title:
+                                text,
                         },
                     };
 
+
                     await ctx.reply(
-                        "⏱ Через сколько минут завершить розыгрыш?\n\nНапример: 60",
+                        `⏱ Через сколько минут завершить розыгрыш?
+
+Например:
+60`,
                     );
+
 
                     return;
                 }
 
 
+                /*
+                 * =========================
+                 * DURATION
+                 * =========================
+                 */
                 case "DURATION": {
+
                     const minutes =
-                        Number(text);
+                        Number(
+                            text,
+                        );
+
 
                     if (
                         !Number.isInteger(
@@ -291,15 +327,19 @@ export function registerGiveawayWizard(
                         ) ||
                         minutes < 1
                     ) {
+
                         await ctx.reply(
                             "❌ Введи количество минут целым числом больше 0.",
                         );
 
+
                         return;
                     }
 
+
                     ctx.session.giveawayWizard = {
-                        step: "FIRST_DEPOSIT",
+                        step:
+                            "FIRST_DEPOSIT",
 
                         data: {
                             ...wizard.data,
@@ -308,6 +348,7 @@ export function registerGiveawayWizard(
                                 minutes,
                         },
                     };
+
 
                     const keyboard =
                         new InlineKeyboard()
@@ -320,6 +361,7 @@ export function registerGiveawayWizard(
                                 "giveaway:first-deposit:no",
                             );
 
+
                     await ctx.reply(
                         "💳 Требовать первый депозит?",
                         {
@@ -328,100 +370,77 @@ export function registerGiveawayWizard(
                         },
                     );
 
+
                     return;
                 }
 
 
+                /*
+                 * =========================
+                 * MINIMUM FIRST DEPOSIT
+                 * =========================
+                 */
                 case "MIN_FTD": {
+
                     const amount =
-                        Number(text);
+                        Number(
+                            text,
+                        );
+
 
                     if (
-                        Number.isNaN(amount) ||
+                        !Number.isFinite(
+                            amount,
+                        ) ||
                         amount < 0
                     ) {
+
                         await ctx.reply(
-                            "❌ Введи корректную сумму.",
+                            "❌ Введи корректную сумму в рублях.",
                         );
+
 
                         return;
                     }
 
-                 ctx.session.giveawayWizard = {
-                    step: "CHANNEL_SUBSCRIPTION",
-
-                    data: {
-                        ...wizard.data,
-
-                        minFirstDepositAmount:
-                            amount,
-                    },
-                };
-
-                const keyboard =
-                    new InlineKeyboard()
-                        .text(
-                            "✅ Да",
-                            "giveaway:channel:yes",
-                        )
-                        .text(
-                            "❌ Нет",
-                            "giveaway:channel:no",
-                        );
-
-                await ctx.reply(
-                    "📢 Требовать подписку на Telegram-канал?",
-                    {
-                        reply_markup:
-                            keyboard,
-                    },
-                );
-
-                return;
-            }
-
-                case "CHANNEL_USERNAME": {
-                    let channelUsername =
-                        text.trim();
-
-                    if (
-                        !channelUsername
-                            .startsWith("@")
-                    ) {
-                        channelUsername =
-                            `@${channelUsername}`;
-                    }
-
-                    if (
-                        channelUsername.length < 2
-                    ) {
-                        await ctx.reply(
-                            "❌ Введи корректный username канала.",
-                        );
-
-                        return;
-                    }
 
                     ctx.session.giveawayWizard = {
-                        step: "WINNERS",
+                        step:
+                            "WINNERS",
 
                         data: {
                             ...wizard.data,
 
-                            channelUsername,
+                            minFirstDepositAmount:
+                                amount,
                         },
                     };
 
+
                     await ctx.reply(
-                        "🏆 Сколько будет победителей?",
+                        `🏆 Сколько будет победителей?
+
+Например:
+3`,
                     );
+
 
                     return;
                 }
 
+
+                /*
+                 * =========================
+                 * WINNERS
+                 * =========================
+                 */
                 case "WINNERS": {
+
                     const winnersCount =
-                        Number(text);
+                        Number(
+                            text,
+                        );
+
 
                     if (
                         !Number.isInteger(
@@ -429,15 +448,19 @@ export function registerGiveawayWizard(
                         ) ||
                         winnersCount < 1
                     ) {
+
                         await ctx.reply(
                             "❌ Количество победителей должно быть целым числом больше 0.",
                         );
 
+
                         return;
                     }
 
+
                     ctx.session.giveawayWizard = {
-                        step: "PRIZES",
+                        step:
+                            "PRIZE_AMOUNT",
 
                         data: {
                             ...wizard.data,
@@ -446,57 +469,55 @@ export function registerGiveawayWizard(
                         },
                     };
 
+
                     await ctx.reply(
-                        `💰 Теперь введи ${winnersCount} призов через запятую.\n\nНапример:\n100,50,25`,
+                        `🎟 Введи номинал одного ваучера в рублях.
+
+Каждый победитель получит ваучер этого номинала.
+
+Например:
+1000`,
                     );
+
 
                     return;
                 }
 
 
-                case "PRIZES": {
-                    const amounts =
-                        text
-                            .split(",")
-                            .map(
-                                (value) =>
-                                    Number(
-                                        value.trim(),
-                                    ),
-                            );
+                /*
+                 * =========================
+                 * PRIZE AMOUNT
+                 * =========================
+                 */
+                case "PRIZE_AMOUNT": {
+
+                    const prizeAmount =
+                        Number(
+                            text,
+                        );
 
 
                     if (
-                        amounts.some(
-                            (amount) =>
-                                Number.isNaN(
-                                    amount,
-                                ) ||
-                                amount <= 0,
-                        )
+                        !Number.isFinite(
+                            prizeAmount,
+                        ) ||
+                        prizeAmount <= 0
                     ) {
+
                         await ctx.reply(
-                            "❌ Все призы должны быть числами больше 0.",
+                            `❌ Введи корректный номинал ваучера.
+
+Например:
+1000`,
                         );
 
-                        return;
-                    }
-
-
-                    if (
-                        amounts.length !==
-                        wizard.data
-                            .winnersCount
-                    ) {
-                        await ctx.reply(
-                            `❌ Нужно указать ровно ${wizard.data.winnersCount} призов.`,
-                        );
 
                         return;
                     }
 
 
                     try {
+
                         const giveaway =
                             await giveawayService
                                 .createGiveawayForPartner(
@@ -521,6 +542,15 @@ export function registerGiveawayWizard(
                                             wizard.data
                                                 .winnersCount,
 
+                                        prizeAmount,
+
+                                        currency:
+                                            "RUB",
+
+                                        /*
+                                         * Розыгрыш относится
+                                         * к affiliate партнера.
+                                         */
                                         requireAffiliate:
                                             true,
 
@@ -532,30 +562,15 @@ export function registerGiveawayWizard(
                                             wizard.data
                                                 .minFirstDepositAmount,
 
+                                        /*
+                                         * Проверка подписки
+                                         * временно отключена.
+                                         */
                                         requireChannelSubscription:
-                                            wizard.data
-                                                .requireChannelSubscription,
+                                            false,
 
                                         channelUsername:
-                                            wizard.data
-                                                .channelUsername,
-
-                                        prizes:
-                                            amounts.map(
-                                                (
-                                                    amount,
-                                                    index,
-                                                ) => ({
-                                                    place:
-                                                        index +
-                                                        1,
-
-                                                    amount,
-
-                                                    currency:
-                                                        "USD",
-                                                }),
-                                            ),  
+                                            null,
                                     },
                                 );
 
@@ -565,32 +580,108 @@ export function registerGiveawayWizard(
 
 
                         const botInfo =
-                            await ctx.api.getMe();
+                            await ctx.api
+                                .getMe();
+
 
                         const giveawayLink =
                             `https://t.me/${botInfo.username}?start=g_${giveaway.id}`;
 
+
+                        const totalPrizeAmount =
+                            giveaway.winnersCount *
+                            giveaway.prizeAmount;
+
+
                         await ctx.reply(
                             `✅ Розыгрыш создан!
 
-                            🎁 ${giveaway.title}
-                            🆔 ID: ${giveaway.id}
-                            🏆 Победителей: ${giveaway.winnersCount}
+🎁 ${giveaway.title}
+🆔 ID: ${giveaway.id}
 
-                            🔗 Ссылка для участников:
-                            ${giveawayLink}`,
+🏆 Победителей: ${giveaway.winnersCount}
+🎟 Ваучер каждому: ${formatMoney(
+                                giveaway.prizeAmount,
+                            )}
+
+💰 Общий призовой фонд: ${formatMoney(
+                                totalPrizeAmount,
+                            )}
+
+📦 Для завершения розыгрыша потребуется:
+${giveaway.winnersCount} × ${formatMoney(
+                                giveaway.prizeAmount,
+                            )}
+
+🔗 Ссылка для участников:
+${giveawayLink}`,
                         );
-                        await showMainMenu(ctx);
+
+
+                        await showMainMenu(
+                            ctx,
+                        );
+
 
                     } catch (error) {
+
                         console.error(
                             error,
                         );
+
+
+                        const message =
+                            error instanceof Error
+                                ? error.message
+                                : String(
+                                    error,
+                                );
+
+
+                        if (
+                            message ===
+                            "PARTNER_INACTIVE"
+                        ) {
+
+                            await ctx.reply(
+                                `⛔ Ваш аккаунт партнёра отключён.
+
+Создание новых розыгрышей недоступно.`,
+                            );
+
+
+                            delete ctx.session
+                                .giveawayWizard;
+
+
+                            await showMainMenu(
+                                ctx,
+                            );
+
+
+                            return;
+                        }
+
+
+                        if (
+                            message ===
+                            "INVALID_PRIZE_AMOUNT"
+                        ) {
+
+                            await ctx.reply(
+                                "❌ Некорректный номинал ваучера.",
+                            );
+
+
+                            return;
+                        }
+
 
                         await ctx.reply(
                             "❌ Не удалось создать розыгрыш.",
                         );
                     }
+
 
                     return;
                 }
@@ -599,5 +690,30 @@ export function registerGiveawayWizard(
 
             await next();
         },
+    );
+}
+
+
+/*
+ * =========================
+ * FORMAT MONEY
+ * =========================
+ */
+function formatMoney(
+    amount: number,
+) {
+
+    return (
+        new Intl.NumberFormat(
+            "ru-RU",
+            {
+                maximumFractionDigits:
+                    2,
+            },
+        ).format(
+            amount,
+        )
+        +
+        " ₽"
     );
 }

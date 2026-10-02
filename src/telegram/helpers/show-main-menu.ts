@@ -12,6 +12,10 @@ import {
     createAdminKeyboard,
 } from "../keyboards/main.keyboards.js";
 
+import {
+    emoji,
+} from "../ui/emojis.js";
+
 
 const userService =
     new UserService();
@@ -24,11 +28,14 @@ export async function showMainMenu(
         return;
     }
 
+
     const user =
         await userService
             .getOrCreateTelegramUser({
                 telegramId:
-                    String(ctx.from.id),
+                    String(
+                        ctx.from.id,
+                    ),
 
                 username:
                     ctx.from.username,
@@ -36,6 +43,7 @@ export async function showMainMenu(
                 firstName:
                     ctx.from.first_name,
             });
+
 
     if (!user) {
         await ctx.reply(
@@ -45,37 +53,82 @@ export async function showMainMenu(
         return;
     }
 
-    if (user.role === "ADMIN") {
-        await ctx.reply(
-            "🏠 Главное меню",
-            {
-                reply_markup:
-                    createAdminKeyboard(),
-            },
-        );
 
-        return;
+    let keyboard;
+
+
+    switch (user.role) {
+        case "ADMIN":
+            keyboard =
+                createAdminKeyboard();
+            break;
+
+        case "PARTNER":
+            keyboard =
+                createPartnerKeyboard();
+            break;
+
+        default:
+            keyboard =
+                createPlayerKeyboard();
     }
 
 
-    if (user.role === "PARTNER") {
-        await ctx.reply(
-            "🏠 Главное меню",
-            {
-                reply_markup:
-                    createPartnerKeyboard(),
-            },
-        );
+    const text =
+        `${emoji("star")} <b>CASINO GIVEAWAY</b>
 
-        return;
+${emoji("slots")} Главное меню
+`;
+
+
+    /*
+     * Если мы пришли сюда после нажатия
+     * inline-кнопки — редактируем существующее
+     * сообщение вместо создания нового.
+     */
+    if (
+        ctx.callbackQuery?.message
+    ) {
+        try {
+            await ctx.editMessageText(
+                text,
+                {
+                    parse_mode:
+                        "HTML",
+
+                    reply_markup:
+                        keyboard,
+                },
+            );
+
+            return;
+        } catch (error) {
+            /*
+             * Например Telegram может вернуть
+             * "message is not modified".
+             *
+             * В таком случае fallback ниже.
+             */
+            console.warn(
+                "Could not edit main menu message:",
+                error,
+            );
+        }
     }
 
 
+    /*
+     * /start, /cancel и другие случаи,
+     * где нечего редактировать.
+     */
     await ctx.reply(
-        "🏠 Главное меню",
+        text,
         {
+            parse_mode:
+                "HTML",
+
             reply_markup:
-                createPlayerKeyboard(),
+                keyboard,
         },
     );
 }

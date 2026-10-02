@@ -3,17 +3,20 @@ import type {
     SessionFlavor,
 } from "grammy";
 
+
 export type GiveawayWizardState =
     | {
         step: "TITLE";
         data: Record<string, never>;
     }
+
     | {
         step: "DURATION";
         data: {
             title: string;
         };
     }
+
     | {
         step: "FIRST_DEPOSIT";
         data: {
@@ -21,6 +24,7 @@ export type GiveawayWizardState =
             durationMinutes: number;
         };
     }
+
     | {
         step: "MIN_FTD";
         data: {
@@ -29,6 +33,7 @@ export type GiveawayWizardState =
             requireFirstDeposit: true;
         };
     }
+
     | {
         step: "WINNERS";
         data: {
@@ -36,70 +41,79 @@ export type GiveawayWizardState =
             durationMinutes: number;
             requireFirstDeposit: boolean;
             minFirstDepositAmount: number;
-            requireChannelSubscription: boolean;
-            channelUsername: string | null;
         };
     }
+
     | {
-        step: "PRIZES";
+        step: "PRIZE_AMOUNT";
         data: {
             title: string;
             durationMinutes: number;
             requireFirstDeposit: boolean;
             minFirstDepositAmount: number;
-            requireChannelSubscription: boolean;
-            channelUsername: string | null;
             winnersCount: number;
         };
-    }
-    | {
-        step: "CHANNEL_SUBSCRIPTION";
-        data: {
-            title: string;
-            durationMinutes: number;
-            requireFirstDeposit: boolean;
-            minFirstDepositAmount: number;
-        };
-    }
-    | {
-        step: "CHANNEL_USERNAME";
-        data: {
-            title: string;
-            durationMinutes: number;
-            requireFirstDeposit: boolean;
-            minFirstDepositAmount: number;
-            requireChannelSubscription: true;
-        };
-
     };
+
 
 export type ParticipationState = {
     giveawayId: number;
-    step: "WAITING_PLAYER_ID";
+
+    step:
+        "WAITING_PLAYER_ID";
+
+    attempts: number;
 };
 
-export type BotSession = {
-    giveawayWizard?: GiveawayWizardState;
-    participation?: ParticipationState;
-    casinoUpload?: CasinoUploadState;
-    partnerAdmin?: PartnerAdminState;
+
+export type CasinoUploadState = {
+    step:
+        "WAITING_CSV";
 };
+
+
+export type VoucherUploadState = {
+    step:
+        | "WAITING_FILE"
+        | "WAITING_TEXT";
+};
+
+
+export type PartnerAdminState =
+    | {
+        step:
+            "WAITING_ADD_DATA";
+    }
+
+    | {
+        step:
+            "WAITING_REMOVE_ID";
+    }
+
+    | {
+        step:
+            "WAITING_ACTIVATE_ID";
+    };
+
+
+export type BotSession = {
+    giveawayWizard?:
+        GiveawayWizardState;
+
+    participation?:
+        ParticipationState;
+
+    casinoUpload?:
+        CasinoUploadState;
+
+    voucherUpload?:
+        VoucherUploadState;
+
+    partnerAdmin?:
+        PartnerAdminState;
+};
+
 
 export type BotContext =
     Context &
     SessionFlavor<BotSession>;
-
-export type CasinoUploadState = {
-    step: "WAITING_CSV";
-};
-
-export type PartnerAdminState =
-    | {
-        step: "WAITING_ADD_DATA";
-    }
-    | {
-        step: "WAITING_REMOVE_ID";
-    }
-    | {
-        step: "WAITING_ACTIVATE_ID";
-    };

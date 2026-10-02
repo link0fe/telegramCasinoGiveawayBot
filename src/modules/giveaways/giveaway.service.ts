@@ -14,12 +14,16 @@ export class GiveawayService {
             new GiveawayRepository(),
     ) {}
 
-    async getPartnerGiveaways(telegramId: string,) {
+
+    async getPartnerGiveaways(
+        telegramId: string,
+    ) {
         return await this.giveawayRepository
             .findAllByPartnerTelegramId(
                 telegramId,
             );
     }
+
 
     async getPartnerGiveawayParticipants(
         giveawayId: number,
@@ -32,17 +36,20 @@ export class GiveawayService {
                     telegramId,
                 );
 
+
         if (!giveaway) {
             throw new Error(
                 "GIVEAWAY_NOT_FOUND_OR_FORBIDDEN",
             );
         }
 
+
         return await this.giveawayRepository
             .findParticipantsForAdmin(
                 giveawayId,
             );
     }
+
 
     async getPartnerGiveawayWinners(
         giveawayId: number,
@@ -55,11 +62,13 @@ export class GiveawayService {
                     telegramId,
                 );
 
+
         if (!giveaway) {
             throw new Error(
                 "GIVEAWAY_NOT_FOUND_OR_FORBIDDEN",
             );
         }
+
 
         return await this.giveawayRepository
             .findWinnersForAdmin(
@@ -67,18 +76,23 @@ export class GiveawayService {
             );
     }
 
-    async getParticipantsForAdmin( giveawayId: number, ) {
+
+    async getParticipantsForAdmin(
+        giveawayId: number,
+    ) {
         const giveaway =
             await this.giveawayRepository
                 .findById(
                     giveawayId,
                 );
 
+
         if (!giveaway) {
             throw new Error(
                 "GIVEAWAY_NOT_FOUND",
             );
         }
+
 
         return await this.giveawayRepository
             .findParticipantsForAdmin(
@@ -87,12 +101,15 @@ export class GiveawayService {
     }
 
 
-    async getWinnersForAdmin( giveawayId: number ) {
+    async getWinnersForAdmin(
+        giveawayId: number,
+    ) {
         const giveaway =
             await this.giveawayRepository
                 .findById(
                     giveawayId,
                 );
+
 
         if (!giveaway) {
             throw new Error(
@@ -100,20 +117,24 @@ export class GiveawayService {
             );
         }
 
+
         return await this.giveawayRepository
             .findWinnersForAdmin(
                 giveawayId,
             );
     }
 
+
     async getAllForAdmin() {
         const giveaways =
             await this.giveawayRepository
                 .findAllForAdmin();
 
+
         return await Promise.all(
             giveaways.map(
                 async (giveaway) => {
+
                     const [
                         participantsCount,
                         winnersCount,
@@ -130,9 +151,12 @@ export class GiveawayService {
                                 ),
                         ]);
 
+
                     return {
                         ...giveaway,
+
                         participantsCount,
+
                         actualWinnersCount:
                             winnersCount,
                     };
@@ -141,10 +165,98 @@ export class GiveawayService {
         );
     }
 
-    async getGiveawayById(giveawayId: number) {
-        return this.giveawayRepository
-            .findById(giveawayId);
+    async getActiveGiveawaysForPlayer(
+        telegramUserId: string,
+    ) {
+        /*
+        * Проверяем, привязан ли
+        * Telegram пользователь
+        * к casino player.
+        */
+        const linkedPlayer =
+            await this.giveawayRepository
+                .findLinkedCasinoPlayer(
+                    telegramUserId,
+                );
+
+
+        /*
+        * Если Player ID уже привязан,
+        * используем его affiliateId
+        * для фильтрации розыгрышей.
+        */
+        const affiliateId =
+            linkedPlayer?.affiliateId;
+
+
+        const activeGiveaways =
+            await this.giveawayRepository
+                .findActiveForPlayer(
+                    affiliateId,
+                );
+
+
+        /*
+        * Для каждого розыгрыша
+        * проверяем участие пользователя
+        * и считаем участников.
+        */
+        const giveaways =
+            await Promise.all(
+                activeGiveaways.map(
+                    async (giveaway) => {
+
+                        const [
+                            participation,
+                            participantsCount,
+                        ] =
+                            await Promise.all([
+                                this.giveawayRepository
+                                    .findPlayerParticipation(
+                                        giveaway.id,
+                                        telegramUserId,
+                                    ),
+
+                                this.giveawayRepository
+                                    .countParticipants(
+                                        giveaway.id,
+                                    ),
+                            ]);
+
+
+                        return {
+                            ...giveaway,
+
+                            participantsCount,
+
+                            participation,
+                        };
+                    },
+                ),
+            );
+
+
+        /*
+        * ВАЖНО:
+        * player-giveaways.command.ts
+        * ожидает именно такой объект.
+        */
+        return {
+            linkedPlayer,
+            giveaways,
+        };
     }
+
+
+    async getGiveawayById(
+        giveawayId: number,
+    ) {
+        return this.giveawayRepository
+            .findById(
+                giveawayId,
+            );
+    }
+
 
     async createGiveawayForPartner(
         telegramId: string,
@@ -175,7 +287,9 @@ export class GiveawayService {
         }
 
 
-        if (!partnerData.partner.isActive) {
+        if (
+            !partnerData.partner.isActive
+        ) {
             throw new Error(
                 "PARTNER_INACTIVE",
             );
@@ -192,7 +306,12 @@ export class GiveawayService {
         }
 
 
-        if (data.winnersCount < 1) {
+        if (
+            !Number.isInteger(
+                data.winnersCount,
+            ) ||
+            data.winnersCount < 1
+        ) {
             throw new Error(
                 "INVALID_WINNERS_COUNT",
             );
@@ -200,18 +319,43 @@ export class GiveawayService {
 
 
         if (
-            data.prizes.length !==
-            data.winnersCount
+            !Number.isFinite(
+                data.prizeAmount,
+            ) ||
+            data.prizeAmount <= 0
         ) {
             throw new Error(
-                "PRIZES_COUNT_MISMATCH",
+                "INVALID_PRIZE_AMOUNT",
             );
         }
 
 
-        return this.giveawayRepository.create(
-            partnerData.partner.id,
-            data,
-        );
+        if (
+            data.currency !==
+            "RUB"
+        ) {
+            throw new Error(
+                "INVALID_CURRENCY",
+            );
+        }
+
+
+        if (
+            !Number.isFinite(
+                data.minFirstDepositAmount,
+            ) ||
+            data.minFirstDepositAmount < 0
+        ) {
+            throw new Error(
+                "INVALID_MIN_FIRST_DEPOSIT",
+            );
+        }
+
+
+        return await this.giveawayRepository
+            .create(
+                partnerData.partner.id,
+                data,
+            );
     }
 }

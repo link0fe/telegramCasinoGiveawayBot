@@ -137,6 +137,13 @@ export const giveaways = sqliteTable(
         winnersCount: integer("winners_count")
             .notNull(),
 
+        prizeAmount: real("prize_amount",)
+            .notNull(),
+
+        currency: text("currency",)
+            .notNull()
+            .default("RUB"),
+
         requireAffiliate: integer(
             "require_affiliate",
             {
@@ -187,33 +194,6 @@ export const giveaways = sqliteTable(
             text(
                 "channel_username",
             ),
-    },
-);
-
-
-// ==========================================
-// PRIZES
-// ==========================================
-
-export const giveawayPrizes = sqliteTable(
-    "giveaway_prizes",
-    {
-        id: integer("id")
-            .primaryKey({ autoIncrement: true }),
-
-        giveawayId: integer("giveaway_id")
-            .notNull()
-            .references(() => giveaways.id),
-
-        place: integer("place")
-            .notNull(),
-
-        amount: real("amount")
-            .notNull(),
-
-        currency: text("currency")
-            .notNull()
-            .default("RUB"),
     },
 );
 
@@ -359,6 +339,61 @@ export const casinoPlayers = sqliteTable(
     },
 );
 
+// ==========================================
+// PLAYER ACCOUNTS
+// ==========================================
+
+export const playerAccounts =sqliteTable(
+    "player_accounts",
+    {
+        id: integer("id")
+            .primaryKey({
+                autoIncrement: true,
+            }),
+
+        userId: integer("user_id")
+            .notNull()
+            .references(
+                () => users.id,
+            ),
+
+        casinoPlayerId: integer(
+            "casino_player_id",
+        )
+            .notNull()
+            .references(
+                () => casinoPlayers.id,
+            ),
+
+        createdAt: integer(
+            "created_at",
+            {
+                mode: "timestamp",
+            },
+        )
+            .notNull()
+            .$defaultFn(
+                () => new Date(),
+            ),
+    },
+
+    (table) => ({
+        userIdUnique:
+            uniqueIndex(
+                "player_accounts_user_id_unique",
+            ).on(
+                table.userId,
+            ),
+
+        casinoPlayerIdUnique:
+            uniqueIndex(
+                "player_accounts_casino_player_id_unique",
+            ).on(
+                table.casinoPlayerId,
+            ),
+    }),
+);
+
 export const casinoImports =
     sqliteTable(
         "casino_imports",
@@ -459,7 +494,7 @@ export const casinoImports =
 
                 currency: text("currency")
                     .notNull()
-                    .default("EUR"),
+                    .default("RUB"),
 
                 isUsed: integer(
                     "is_used",

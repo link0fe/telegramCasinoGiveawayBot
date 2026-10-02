@@ -7,7 +7,7 @@ import {
 } from "../database/schema.js";
 
 
-const giveawayId = 16
+const giveawayId = 2
 
 
 if (

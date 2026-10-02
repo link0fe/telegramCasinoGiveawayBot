@@ -1,8 +1,9 @@
-import { InlineKeyboard } from "grammy";
+import {
+    InlineKeyboard,
+} from "grammy";
 
 
 export function createPlayerKeyboard() {
-
     return new InlineKeyboard()
         .text(
             "🎁 Розыгрыши",
@@ -17,7 +18,6 @@ export function createPlayerKeyboard() {
 
 
 export function createPartnerKeyboard() {
-
     return new InlineKeyboard()
         .text(
             "➕ Создать розыгрыш",
@@ -37,7 +37,6 @@ export function createPartnerKeyboard() {
 
 
 export function createAdminKeyboard() {
-
     return new InlineKeyboard()
         .text(
             "👥 Партнеры",
@@ -52,6 +51,11 @@ export function createAdminKeyboard() {
         .text(
             "📊 Данные казино",
             "admin:casino-data",
+        )
+        .row()
+        .text(
+            "🎟 Ваучеры",
+            "admin:vouchers",
         )
         .row()
         .text(

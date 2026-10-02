@@ -448,9 +448,14 @@ ${giveaway.actualWinnersCount} / ${
                             )
                             .row()
                             .text(
+                                "🎟 Ваучеры",
+                                "admin:vouchers",
+                            )
+                            .row()
+                            .text(
                                 "👤 Профиль",
                                 "profile",
-                            ),
+                            )
                 },
             );
         },
