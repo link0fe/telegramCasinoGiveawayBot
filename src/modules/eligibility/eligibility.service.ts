@@ -11,8 +11,6 @@ import type {
 } from "./eligibility.types.js";
 
 
-const USD_TO_RUB_RATE = 84;
-
 
 export class EligibilityService {
 
@@ -131,21 +129,17 @@ export class EligibilityService {
             giveaway.requireFirstDeposit
         ) {
 
-            const firstDepositRub =
-                player.firstDepositAmount *
-                USD_TO_RUB_RATE;
-
-
             if (
-                firstDepositRub <
-                giveaway.minFirstDepositAmount
+                giveaway.requireFirstDeposit &&
+                player.firstDepositAmount <
+                    giveaway.minFirstDepositAmount
             ) {
                 return {
                     eligible: false,
-                    reason:
-                        "FIRST_DEPOSIT_TOO_SMALL",
+                    reason: "FIRST_DEPOSIT_TOO_SMALL",
                 };
             }
+
         }
 
 

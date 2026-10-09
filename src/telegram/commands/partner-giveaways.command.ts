@@ -297,8 +297,8 @@ ${
         : "не требуется"
 }
 
-💰 Минимальный FTD:
-${giveaway.minFirstDepositAmount} ₽`,
+💵 Минимальный FTD:
+${giveaway.minFirstDepositAmount} $`,
                 {
                     reply_markup:
                         keyboard,

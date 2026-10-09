@@ -151,10 +151,10 @@ export function registerGiveawayWizard(
 
 
                 await ctx.reply(
-                    `💰 Введи минимальную сумму первого депозита в рублях.
+                    `💵 Введите минимальный первый депозит в долларах (USD):
 
 Например:
-5000`,
+20`,
                 );
 
 
@@ -396,7 +396,7 @@ export function registerGiveawayWizard(
                     ) {
 
                         await ctx.reply(
-                            "❌ Введи корректную сумму в рублях.",
+                            "❌ Введи корректную сумму в долларах.",
                         );
 
 
@@ -602,7 +602,10 @@ export function registerGiveawayWizard(
 🏆 Победителей: ${giveaway.winnersCount}
 🎟 Ваучер каждому: ${formatMoney(
                                 giveaway.prizeAmount,
-                            )}
+                            )} 
+${giveaway.requireFirstDeposit
+    ? `💵 Условие участия: первый депозит должен составлять не менее $${giveaway.minFirstDepositAmount}.`
+    : ""}
 
 💰 Общий призовой фонд: ${formatMoney(
                                 totalPrizeAmount,
